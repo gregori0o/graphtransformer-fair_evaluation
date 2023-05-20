@@ -17,3 +17,6 @@ data/molecules/zinc-full/*.pkl
 
 dataset/
 
+.env/
+venv/
+.python-version
