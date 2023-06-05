@@ -200,6 +200,7 @@ class GraphsDataset(torch.utils.data.Dataset):
         data_dir = f"data/{DATASETS_DIR}/{self.name}/"
         self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
         self.size = len(self.tu_dataset)
+        self.max_num_node = self.tu_dataset.max_num_node
         self.num_classes = self.tu_dataset.num_labels
 
         graphs, labels = self._create_dataset_from_indexes(train_idx)
