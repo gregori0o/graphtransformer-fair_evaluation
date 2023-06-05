@@ -202,6 +202,8 @@ class GraphsDataset(torch.utils.data.Dataset):
         self.size = len(self.tu_dataset)
         self.max_num_node = self.tu_dataset.max_num_node
         self.num_classes = self.tu_dataset.num_labels
+        self.num_edge_type = 4  # todo
+        self.num_node_type = 28  # todo
 
         graphs, labels = self._create_dataset_from_indexes(train_idx)
         self.train = SplitDataset("train", graphs, labels)

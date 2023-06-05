@@ -30,8 +30,7 @@ class DotDict(dict):
 """
     IMPORTING CUSTOM MODULES/METHODS
 """
-from data.data import LoadData
-from nets.molecules_graph_regression.load_net import gnn_model
+from nets.load_net import gnn_model
 
 """
     GPU Setup
@@ -140,7 +139,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     )
 
     epoch_train_losses, epoch_val_losses = [], []
-    epoch_train_MAEs, epoch_val_MAEs = [], []
+    epoch_train_SCOREs, epoch_val_SCOREs = [], []
 
     # import train and evaluate functions
     from train.train_molecules_graph_regression import evaluate_network, train_epoch
@@ -173,25 +172,27 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
 
                 start = time.time()
 
-                epoch_train_loss, epoch_train_mae, optimizer = train_epoch(
+                epoch_train_loss, epoch_train_score, optimizer = train_epoch(
                     model, optimizer, device, train_loader, epoch
                 )
 
-                epoch_val_loss, epoch_val_mae = evaluate_network(
+                epoch_val_loss, epoch_val_score = evaluate_network(
                     model, device, val_loader, epoch
                 )
-                _, epoch_test_mae = evaluate_network(model, device, test_loader, epoch)
+                _, epoch_test_score = evaluate_network(
+                    model, device, test_loader, epoch
+                )
 
                 epoch_train_losses.append(epoch_train_loss)
                 epoch_val_losses.append(epoch_val_loss)
-                epoch_train_MAEs.append(epoch_train_mae)
-                epoch_val_MAEs.append(epoch_val_mae)
+                epoch_train_SCOREs.append(epoch_train_score)
+                epoch_val_SCOREs.append(epoch_val_score)
 
                 writer.add_scalar("train/_loss", epoch_train_loss, epoch)
                 writer.add_scalar("val/_loss", epoch_val_loss, epoch)
-                writer.add_scalar("train/_mae", epoch_train_mae, epoch)
-                writer.add_scalar("val/_mae", epoch_val_mae, epoch)
-                writer.add_scalar("test/_mae", epoch_test_mae, epoch)
+                writer.add_scalar("train/_score", epoch_train_score, epoch)
+                writer.add_scalar("val/_score", epoch_val_score, epoch)
+                writer.add_scalar("test/_score", epoch_test_score, epoch)
                 writer.add_scalar(
                     "learning_rate", optimizer.param_groups[0]["lr"], epoch
                 )
@@ -201,9 +202,9 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
                     lr=optimizer.param_groups[0]["lr"],
                     train_loss=epoch_train_loss,
                     val_loss=epoch_val_loss,
-                    train_MAE=epoch_train_mae,
-                    val_MAE=epoch_val_mae,
-                    test_MAE=epoch_test_mae,
+                    train_SCORE=epoch_train_score,
+                    val_SCORE=epoch_val_score,
+                    test_SCORE=epoch_test_score,
                 )
 
                 per_epoch_time.append(time.time() - start)
@@ -244,10 +245,10 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
         print("-" * 89)
         print("Exiting from training early because of KeyboardInterrupt")
 
-    _, test_mae = evaluate_network(model, device, test_loader, epoch)
-    _, train_mae = evaluate_network(model, device, train_loader, epoch)
-    print("Test MAE: {:.4f}".format(test_mae))
-    print("Train MAE: {:.4f}".format(train_mae))
+    _, test_score = evaluate_network(model, device, test_loader, epoch)
+    _, train_score = evaluate_network(model, device, train_loader, epoch)
+    print("Test SCORE: {:.4f}".format(test_score))
+    print("Train SCORE: {:.4f}".format(train_score))
     print("Convergence Time (Epochs): {:.4f}".format(epoch))
     print("TOTAL TIME TAKEN: {:.4f}s".format(time.time() - t0))
     print("AVG TIME PER EPOCH: {:.4f}s".format(np.mean(per_epoch_time)))
@@ -260,7 +261,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     with open(write_file_name + ".txt", "w") as f:
         f.write(
             """Dataset: {},\nModel: {}\n\nparams={}\n\nnet_params={}\n\n{}\n\nTotal Parameters: {}\n\n
-    FINAL RESULTS\nTEST MAE: {:.4f}\nTRAIN MAE: {:.4f}\n\n
+    FINAL RESULTS\nTEST SCORE: {:.4f}\nTRAIN SCORE: {:.4f}\n\n
     Convergence Time (Epochs): {:.4f}\nTotal Time Taken: {:.4f} hrs\nAverage Time Per Epoch: {:.4f} s\n\n\n""".format(
                 DATASET_NAME,
                 MODEL_NAME,
@@ -268,20 +269,21 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
                 net_params,
                 model,
                 net_params["total_param"],
-                test_mae,
-                train_mae,
+                test_score,
+                train_score,
                 epoch,
                 (time.time() - t0) / 3600,
                 np.mean(per_epoch_time),
             )
         )
 
-    return test_mae
+    return test_score
 
 
-def train_graph_transformer(dataset, config_file=None):
-    with open(config_file) as f:
-        config = json.load(f)
+def train_graph_transformer(dataset, config=None, config_file=None):
+    if config_file is not None:
+        with open(config_file) as f:
+            config = json.load(f)
 
     # device
     device = gpu_setup(config["gpu"]["use"], config["gpu"]["id"])
@@ -296,6 +298,12 @@ def train_graph_transformer(dataset, config_file=None):
     net_params["device"] = device
     net_params["gpu_id"] = config["gpu"]["id"]
     net_params["batch_size"] = params["batch_size"]
+
+    # add to config info about dataset
+    net_params["max_wl_role_index"] = dataset.max_num_node
+    net_params["num_classes"] = dataset.num_classes
+    net_params["num_node_type"] = dataset.num_node_type
+    net_params["num_edge_type"] = dataset.num_edge_type
 
     # ZINC
     net_params["num_atom_type"] = dataset.num_atom_type
