@@ -2,13 +2,10 @@ import json
 
 import numpy as np
 import pandas as pd
+from dgl.data import TUDataset
 
+from data.load_data import DATA_SPLITS_DIR, DatasetName
 from evaluation_config import K_FOLD
-from utils import DATASET_NAME
-
-configurations = {
-    DATASET_NAME.ZINC: {"path": "molecules", "size": 1000, "from_file": True}
-}
 
 
 class NpEncoder(json.JSONEncoder):
@@ -22,23 +19,14 @@ class NpEncoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, obj)
 
 
-def generate(dataset_name: DATASET_NAME):
+def generate(dataset_name: DatasetName):
     np.random.seed(12)
-    config = configurations.get(dataset_name)
-    if config is None:
-        raise ValueError(f"There is no configuration for {dataset_name} dataset.")
-    path = config["path"]
-    from_file = config.get("from_file")
-    if from_file:
-        index_path = f"./data/{path}/"
-        train = pd.read_csv(index_path + "train.index", header=None).values.reshape(-1)
-        test = pd.read_csv(index_path + "test.index", header=None).values.reshape(-1)
-        val = pd.read_csv(index_path + "val.index", header=None).values.reshape(-1)
-        indexes = np.random.permutation(np.r_[train, test, val])
-        size = indexes.shape[0]
-    else:
-        size = config["size"]
-        indexes = np.random.permutation(size)
+    path = f"data/{DATA_SPLITS_DIR}/{dataset_name.value}.json"
+
+    tmp_dataset = TUDataset(dataset_name.value, f"/tmp/{dataset_name.value}")
+    size = len(tmp_dataset)
+
+    indexes = np.random.permutation(size)
     fold_size = size // K_FOLD
     folds = []
     for i in range(K_FOLD):
@@ -46,9 +34,11 @@ def generate(dataset_name: DATASET_NAME):
         train_fold = np.r_[indexes[: fold_size * i], indexes[fold_size * (i + 1) :]]
         folds.append({"train": train_fold, "test": test_fold})
     dumped = json.dumps(folds, cls=NpEncoder)
-    with open(f"./data-splits/{path}/data_split.json", "w") as f:
+    with open(path, "w") as f:
         f.write(dumped)
 
 
 if __name__ == "__main__":
-    generate(DATASET_NAME.ZINC)
+    for dataset_name in DatasetName:
+        print(type(dataset_name), dataset_name.value)
+        generate(dataset_name)
