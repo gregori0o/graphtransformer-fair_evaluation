@@ -1,5 +1,7 @@
 import hashlib
 import json
+import os
+import pickle
 import time
 from enum import Enum
 from pathlib import Path
@@ -29,7 +31,16 @@ class DatasetName(Enum):
 
 
 def load_indexes(dataset_name: DatasetName):
-    path = f"{DATA_SPLITS_DIR}/{dataset_name.value}.json"
+    limit = os.environ.get("SIZE_LIMIT")
+    if limit is None:
+        path = f"data/{DATA_SPLITS_DIR}/{dataset_name.value}.json"
+    else:
+        path = f"data/{DATA_SPLITS_DIR}/{dataset_name.value}_{limit}.json"
+        limit = int(limit)
+    if not os.path.exists(path):
+        from generate_splits import generate
+
+        generate(dataset_name, limit)
     with open(path, "r") as f:
         indexes = json.load(f)
     return indexes
@@ -85,13 +96,18 @@ def make_full_graph(g):
     return full_g
 
 
-def laplacian_positional_encoding(g, pos_enc_dim):
+def laplacian_positional_encoding(g: dgl.DGLGraph, pos_enc_dim):
     """
     Graph positional encoding v/ Laplacian eigenvectors
     """
 
     # Laplacian
-    A = g.adjacency_matrix_scipy(return_edge_ids=False).astype(float)
+    # A = g.adjacency_matrix_scipy(return_edge_ids=False).astype(float)
+    sparse_matrix = g.adjacency_matrix()
+    A = sp.csr_matrix(
+        (sparse_matrix.val, sparse_matrix.csr()[1], sparse_matrix.csr()[0]),
+        shape=sparse_matrix.shape,
+    ).astype(float)
     N = sp.diags(dgl.backend.asnumpy(g.in_degrees()).clip(1) ** -0.5, dtype=float)
     L = sp.eye(g.number_of_nodes()) - N * A * N
 
@@ -99,7 +115,10 @@ def laplacian_positional_encoding(g, pos_enc_dim):
     EigVal, EigVec = np.linalg.eig(L.toarray())
     idx = EigVal.argsort()  # increasing order
     EigVal, EigVec = EigVal[idx], np.real(EigVec[:, idx])
-    g.ndata["lap_pos_enc"] = torch.from_numpy(EigVec[:, 1 : pos_enc_dim + 1]).float()
+    encoding = EigVec[:, 1 : pos_enc_dim + 1]
+    with_padding = np.zeros((encoding.shape[0], pos_enc_dim), dtype=float)
+    with_padding[:, : encoding.shape[1]] = encoding
+    g.ndata["lap_pos_enc"] = torch.from_numpy(with_padding).float()
 
     return g
 
@@ -169,7 +188,7 @@ class SplitDataset(torch.utils.data.Dataset):
         self.split = split
 
         self.graph_lists = list(graphs)
-        self.graph_labels = list(labels)
+        self.graph_labels = torch.tensor(list(labels)).float()
         self.n_samples = len(graphs)
 
     def __len__(self):
@@ -202,8 +221,10 @@ class GraphsDataset(torch.utils.data.Dataset):
         self.size = len(self.tu_dataset)
         self.max_num_node = self.tu_dataset.max_num_node
         self.num_classes = self.tu_dataset.num_labels
-        self.num_edge_type = 4  # todo
-        self.num_node_type = 28  # todo
+        if self.num_classes is None:
+            self.num_classes = 1  # regression
+        self.num_edge_type = 1  # updated in _create_dataset_from_indexes
+        self.num_node_type = 1  # updated in _create_dataset_from_indexes
 
         graphs, labels = self._create_dataset_from_indexes(train_idx)
         self.train = SplitDataset("train", graphs, labels)
@@ -225,8 +246,26 @@ class GraphsDataset(torch.utils.data.Dataset):
         labels = []
         for idx in indexes:
             g, l = self.tu_dataset[idx]
+            node_labels = g.ndata.get("node_labels")
+            g.ndata["feat"] = (
+                torch.zeros(g.num_nodes(), dtype=torch.long)
+                if node_labels is None
+                else node_labels.reshape(-1).long()
+            )
+            self.num_node_type = max(
+                self.num_node_type, max(g.ndata["feat"].numpy()) + 1
+            )
+            edge_labels = g.edata.get("edge_labels")
+            g.edata["feat"] = (
+                torch.zeros(g.num_edges(), dtype=torch.long)
+                if edge_labels is None
+                else edge_labels.reshape(-1).long()
+            )
+            self.num_edge_type = max(
+                self.num_edge_type, max(g.edata["feat"].numpy()) + 1
+            )
             graphs.append(g)
-            labels.append(l)
+            labels.append(float(l))
         return graphs, labels
 
     # form a mini batch from a given list of samples = [(graph, label) pairs]

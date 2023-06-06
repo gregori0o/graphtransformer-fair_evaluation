@@ -142,7 +142,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     epoch_train_SCOREs, epoch_val_SCOREs = [], []
 
     # import train and evaluate functions
-    from train.train_molecules_graph_regression import evaluate_network, train_epoch
+    from train.train_graph_classification import evaluate_network, train_epoch
 
     train_loader = DataLoader(
         trainset,
@@ -304,10 +304,6 @@ def train_graph_transformer(dataset, config=None, config_file=None):
     net_params["num_classes"] = dataset.num_classes
     net_params["num_node_type"] = dataset.num_node_type
     net_params["num_edge_type"] = dataset.num_edge_type
-
-    # ZINC
-    net_params["num_atom_type"] = dataset.num_atom_type
-    net_params["num_bond_type"] = dataset.num_bond_type
 
     root_log_dir = (
         out_dir

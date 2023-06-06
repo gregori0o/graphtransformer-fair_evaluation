@@ -15,8 +15,10 @@ data/molecules/*.pickle
 data/molecules/*.zip
 data/molecules/zinc-full/*.pkl
 
-dataset/
+datasets/
 
 .env/
 venv/
+.venv/
 .python-version
+results/

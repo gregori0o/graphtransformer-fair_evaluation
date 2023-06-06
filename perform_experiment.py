@@ -8,6 +8,7 @@ from sklearn.model_selection import train_test_split
 from data.load_data import DatasetName, GraphsDataset, load_indexes
 from evaluation_config import K_FOLD, R_EVALUATION
 from train_graph_transformer import train_graph_transformer
+from utils import NpEncoder
 
 configurations = {
     DatasetName.ZINC: {
@@ -15,7 +16,61 @@ configurations = {
         "net_parans_grid": {},
         "params_grid": {},
         "tune_hyperparameters": False,
-    }
+    },
+    DatasetName.DD: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.NCI1: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.PROTEINS: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.ENZYMES: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.IMDB_BINARY: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.IMDB_MULTI: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.REDDIT_BINARY: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.REDDIT_MULTI: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
+    DatasetName.COLLAB: {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    },
 }
 
 
@@ -73,7 +128,7 @@ def perform_experiment(dataset_name):
             acc = train_graph_transformer(dataset, train_config)
             scores_r += acc
         scores_r /= R_EVALUATION
-        print(f"MEAN ACC = {scores_r} in FOLD {i}")
+        print(f"MEAN SCORE = {scores_r} in FOLD {i}")
         scores.append(scores_r)
 
     # evaluate model
@@ -88,7 +143,8 @@ def perform_experiment(dataset_name):
     train_config["dataset_name"] = dataset_name.value
     train_config["mean_score"] = mean
     train_config["std_score"] = std
-    dumped = json.dumps(train_config)
+    del train_config["net_params"]["device"]
+    dumped = json.dumps(train_config, cls=NpEncoder)
     with open(
         f"results/result_GT_{dataset_name.value}_{time.strftime('%Hh%Mm%Ss_on_%b_%d_%Y')}.json",
         "w",
@@ -97,4 +153,5 @@ def perform_experiment(dataset_name):
 
 
 if __name__ == "__main__":
-    perform_experiment(DatasetName.ZINC)
+    for dataset_name in DatasetName:
+        perform_experiment(dataset_name)
