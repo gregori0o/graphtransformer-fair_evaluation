@@ -81,12 +81,20 @@ def get_all_params(param_grid):
 
 
 def perform_experiment(dataset_name):
-    config = configurations.get(dataset_name)
-    if config is None:
-        raise ValueError(f"There is no configuration for {dataset_name} dataset.")
+    # config = configurations.get(dataset_name)
+    # if config is None:
+    #     raise ValueError(f"There is no configuration for {dataset_name} dataset.")
+
+    config = {
+        "config_path": "configs/zinc_config.json",
+        "net_parans_grid": {},
+        "params_grid": {},
+        "tune_hyperparameters": False,
+    }
 
     with open(config["config_path"], "r") as f:
         train_config = json.load(f)
+    train_config["out_dir"] = f"out/{dataset_name.value}/"
 
     # load indexes
     indexes = load_indexes(dataset_name)

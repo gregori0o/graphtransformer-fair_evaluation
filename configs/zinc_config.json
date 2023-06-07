@@ -4,11 +4,9 @@
         "id": 0
     },
     
-    "out_dir": "out/ZINC/",
-    
     "params": {
         "seed": 41,
-        "epochs": 1000,
+        "epochs": 5,
         "batch_size": 128,
         "init_lr": 0.0007,
         "lr_reduce_factor": 0.5,
