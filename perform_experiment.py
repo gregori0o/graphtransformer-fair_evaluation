@@ -1,4 +1,5 @@
 import json
+import time
 
 import numpy as np
 from sklearn.model_selection import train_test_split
@@ -13,6 +14,17 @@ configurations = {
         "path": "molecules",
     }
 }
+
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        if isinstance(obj, np.floating):
+            return float(obj)
+        if isinstance(obj, np.ndarray):
+            return obj.tolist()
+        return json.JSONEncoder.default(self, obj)
 
 
 def perform_experiment(dataset_name):
@@ -54,6 +66,19 @@ def perform_experiment(dataset_name):
     print(f"Evaluation of model on {dataset_name}")
     print(f"Mean acc: {mean}")
     print(f"STD acc: {std}")
+
+    with open("zinc_config.json", "r") as f:
+        train_config = json.load(f)
+
+    train_config["dataset_name"] = dataset_name.value
+    train_config["mean_score"] = mean
+    train_config["std_score"] = std
+    dumped = json.dumps(train_config, cls=NpEncoder)
+    with open(
+        f"results/result_GT_{dataset_name.value}_{time.strftime('%Hh%Mm%Ss_on_%b_%d_%Y')}.json",
+        "w",
+    ) as f:
+        f.write(dumped)
 
 
 if __name__ == "__main__":

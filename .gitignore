@@ -20,3 +20,8 @@ dataset/
 .env/
 venv/
 .python-version
+
+datasets/
+
+.venv/
+results/
