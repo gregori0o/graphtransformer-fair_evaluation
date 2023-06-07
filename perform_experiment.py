@@ -162,4 +162,7 @@ def perform_experiment(dataset_name):
 
 if __name__ == "__main__":
     for dataset_name in DatasetName:
+        if dataset_name == DatasetName.ZINC:
+            continue
         perform_experiment(dataset_name)
+    perform_experiment(DatasetName.ZINC)
