@@ -124,6 +124,8 @@ def perform_experiment(dataset_name):
                         best_acc = acc
                         best_params = (param.copy(), net_param.copy())
 
+                    del dataset
+
             train_config["params"].update(best_params[0])
             train_config["net_params"].update(best_params[1])
 
@@ -135,6 +137,8 @@ def perform_experiment(dataset_name):
             dataset = GraphsDataset(dataset_name, train_idx, val_idx, test_idx)
             acc = train_graph_transformer(dataset, train_config)
             scores_r += acc
+
+            del dataset
         scores_r /= R_EVALUATION
         print(f"MEAN SCORE = {scores_r} in FOLD {i}")
         scores.append(scores_r)
