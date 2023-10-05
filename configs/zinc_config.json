@@ -6,7 +6,7 @@
     
     "params": {
         "seed": 41,
-        "epochs": 5,
+        "epochs": 2,
         "batch_size": 128,
         "init_lr": 0.0007,
         "lr_reduce_factor": 0.5,
@@ -29,10 +29,10 @@
         "dropout": 0.0,
         "layer_norm": false,
         "batch_norm": true,
-        "self_loop": false,
+        "self_loop": true,
         "lap_pos_enc": true,
         "pos_enc_dim": 8,
         "wl_pos_enc": false,
-        "full_graph": false
+        "full_graph": true
     }
 }

@@ -142,6 +142,7 @@ def perform_experiment(dataset_name):
         scores_r /= R_EVALUATION
         print(f"MEAN SCORE = {scores_r} in FOLD {i}")
         scores.append(scores_r)
+        break
 
     # evaluate model
     mean = np.mean(scores)
