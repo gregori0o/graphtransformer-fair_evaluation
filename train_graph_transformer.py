@@ -79,24 +79,6 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
 
     DATASET_NAME = dataset.name
 
-    # if net_params["lap_pos_enc"]:
-    #     st = time.time()
-    #     print("[!] Adding Laplacian positional encoding.")
-    #     dataset._add_laplacian_positional_encodings(net_params["pos_enc_dim"])
-    #     print("Time LapPE:", time.time() - st)
-
-    # if net_params["wl_pos_enc"]:
-    #     st = time.time()
-    #     print("[!] Adding WL positional encoding.")
-    #     dataset._add_wl_positional_encodings()
-    #     print("Time WL PE:", time.time() - st)
-
-    # if net_params["full_graph"]:
-    #     st = time.time()
-    #     print("[!] Converting the given graphs to full graphs..")
-    #     dataset._make_full_graph()
-    #     print("Time taken to convert to full graphs:", time.time() - st)
-
     trainset, valset, testset = dataset.train, dataset.val, dataset.test
 
     root_log_dir, root_ckpt_dir, write_file_name, write_config_file = dirs
