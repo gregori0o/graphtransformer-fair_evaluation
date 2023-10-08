@@ -228,5 +228,5 @@ if __name__ == "__main__":
     perform_experiment(DatasetName.IMDB_MULTI)
     # perform_experiment(DatasetName.REDDIT_BINARY)
     # perform_experiment(DatasetName.REDDIT_MULTI)
-    perform_experiment(DatasetName.COLLAB)
-    perform_experiment(DatasetName.ZINC)
+    # perform_experiment(DatasetName.COLLAB)
+    # perform_experiment(DatasetName.ZINC)
