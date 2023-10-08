@@ -220,13 +220,13 @@ def perform_experiment(dataset_name):
 
 
 if __name__ == "__main__":
-    # perform_experiment(DatasetName.DD)
-    # perform_experiment(DatasetName.NCI1)
-    # perform_experiment(DatasetName.PROTEINS)
+    perform_experiment(DatasetName.DD)
+    perform_experiment(DatasetName.NCI1)
+    perform_experiment(DatasetName.PROTEINS)
     perform_experiment(DatasetName.ENZYMES)
-    # perform_experiment(DatasetName.IMDB_BINARY)
-    # perform_experiment(DatasetName.IMDB_MULTI)
-    # perform_experiment(DatasetName.REDDIT_BINARY)
-    # perform_experiment(DatasetName.REDDIT_MULTI)
-    # perform_experiment(DatasetName.COLLAB)
-    # perform_experiment(DatasetName.ZINC)
+    perform_experiment(DatasetName.IMDB_BINARY)
+    perform_experiment(DatasetName.IMDB_MULTI)
+    perform_experiment(DatasetName.REDDIT_BINARY)
+    perform_experiment(DatasetName.REDDIT_MULTI)
+    perform_experiment(DatasetName.COLLAB)
+    perform_experiment(DatasetName.ZINC)
