@@ -68,7 +68,18 @@ def self_loop(g):
 
     # This new edata is not used since this function gets called only for GCN, GAT
     # However, we need this for the generic requirement of ndata and edata
-    new_g.edata["feat"] = torch.zeros(new_g.number_of_edges())
+    new_g.edata["feat"] = torch.zeros(new_g.number_of_edges(), dtype=int)
+
+    try:
+        new_g.ndata["lap_pos_enc"] = g.ndata["lap_pos_enc"]
+    except:
+        pass
+
+    try:
+        new_g.ndata["wl_pos_enc"] = g.ndata["wl_pos_enc"]
+    except:
+        pass
+
     return new_g
 
 
