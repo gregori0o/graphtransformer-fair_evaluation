@@ -142,7 +142,6 @@ def perform_experiment(dataset_name):
         scores_r /= R_EVALUATION
         print(f"MEAN SCORE = {scores_r} in FOLD {i}")
         scores.append(scores_r)
-        break
 
     # evaluate model
     mean = np.mean(scores)
@@ -169,10 +168,10 @@ if __name__ == "__main__":
     # perform_experiment(DatasetName.DD)
     # perform_experiment(DatasetName.NCI1)
     # perform_experiment(DatasetName.PROTEINS)
-    # perform_experiment(DatasetName.ENZYMES)
+    perform_experiment(DatasetName.ENZYMES)
     # perform_experiment(DatasetName.IMDB_BINARY)
     # perform_experiment(DatasetName.IMDB_MULTI)
-    perform_experiment(DatasetName.REDDIT_BINARY)
-    perform_experiment(DatasetName.REDDIT_MULTI)
-    perform_experiment(DatasetName.COLLAB)
-    perform_experiment(DatasetName.ZINC)
+    # perform_experiment(DatasetName.REDDIT_BINARY)
+    # perform_experiment(DatasetName.REDDIT_MULTI)
+    # perform_experiment(DatasetName.COLLAB)
+    # perform_experiment(DatasetName.ZINC)
