@@ -212,7 +212,7 @@ class SplitDataset(torch.utils.data.Dataset):
 
 
 class GraphsDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_name, train_idx, val_idx, test_idx):
+    def __init__(self, dataset_name):
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
@@ -226,25 +226,19 @@ class GraphsDataset(torch.utils.data.Dataset):
         self.num_edge_type = 1  # updated in _create_dataset_from_indexes
         self.num_node_type = 1  # updated in _create_dataset_from_indexes
 
-        graphs, labels = self._create_dataset_from_indexes(train_idx)
-        self.train = SplitDataset("train", graphs, labels)
+        self.graphs, self.labels = self._load_graphs()
+        self.train = None
+        self.val = None
+        self.test = None
 
-        graphs, labels = self._create_dataset_from_indexes(val_idx)
-        self.val = SplitDataset("val", graphs, labels)
-
-        graphs, labels = self._create_dataset_from_indexes(test_idx)
-        self.test = SplitDataset("test", graphs, labels)
-
-        print(
-            "train, test, val sizes :", len(self.train), len(self.test), len(self.val)
-        )
+        print("dataset size :", len(self.graphs))
         print("[I] Finished loading.")
         print("[I] Data load time: {:.4f}s".format(time.time() - start))
 
-    def _create_dataset_from_indexes(self, indexes):
+    def _load_graphs(self):
         graphs = []
         labels = []
-        for idx in indexes:
+        for idx in range(self.size):
             g, l = self.tu_dataset[idx]
             node_labels = g.ndata.get("node_labels")
             g.ndata["feat"] = (
@@ -268,6 +262,24 @@ class GraphsDataset(torch.utils.data.Dataset):
             labels.append(float(l))
         return graphs, labels
 
+    def upload_indexes(self, train_idx, val_idx, test_idx):
+        train_graphs = [self.graphs[ix] for ix in train_idx]
+        train_labels = [self.labels[ix] for ix in train_idx]
+        self.train = SplitDataset("train", train_graphs, train_labels)
+
+        val_graphs = [self.graphs[ix] for ix in val_idx]
+        val_labels = [self.labels[ix] for ix in val_idx]
+        self.val = SplitDataset("val", val_graphs, val_labels)
+
+        test_graphs = [self.graphs[ix] for ix in test_idx]
+        test_labels = [self.labels[ix] for ix in test_idx]
+        self.test = SplitDataset("test", test_graphs, test_labels)
+
+        print("Loaded indexes of the dataset")
+        print(
+            "train, test, val sizes :", len(self.train), len(self.test), len(self.val)
+        )
+
     # form a mini batch from a given list of samples = [(graph, label) pairs]
     def collate(self, samples):
         # The input samples is a list of pairs (graph, label).
@@ -282,39 +294,25 @@ class GraphsDataset(torch.utils.data.Dataset):
         # function for adding self loops
         # this function will be called only if self_loop flag is True
 
-        self.train.graph_lists = [self_loop(g) for g in self.train.graph_lists]
-        self.val.graph_lists = [self_loop(g) for g in self.val.graph_lists]
-        self.test.graph_lists = [self_loop(g) for g in self.test.graph_lists]
+        self.graphs = [self_loop(g) for g in self.graphs]
 
     def _make_full_graph(self):
 
         # function for converting graphs to full graphs
         # this function will be called only if full_graph flag is True
-        self.train.graph_lists = [make_full_graph(g) for g in self.train.graph_lists]
-        self.val.graph_lists = [make_full_graph(g) for g in self.val.graph_lists]
-        self.test.graph_lists = [make_full_graph(g) for g in self.test.graph_lists]
+
+        self.graphs = [make_full_graph(g) for g in self.graphs]
 
     def _add_laplacian_positional_encodings(self, pos_enc_dim):
 
         # Graph positional encoding v/ Laplacian eigenvectors
-        self.train.graph_lists = [
-            laplacian_positional_encoding(g, pos_enc_dim)
-            for g in self.train.graph_lists
-        ]
-        self.val.graph_lists = [
-            laplacian_positional_encoding(g, pos_enc_dim) for g in self.val.graph_lists
-        ]
-        self.test.graph_lists = [
-            laplacian_positional_encoding(g, pos_enc_dim) for g in self.test.graph_lists
+
+        self.graphs = [
+            laplacian_positional_encoding(g, pos_enc_dim) for g in self.graphs
         ]
 
     def _add_wl_positional_encodings(self):
 
         # WL positional encoding from Graph-Bert, Zhang et al 2020.
-        self.train.graph_lists = [
-            wl_positional_encoding(g) for g in self.train.graph_lists
-        ]
-        self.val.graph_lists = [wl_positional_encoding(g) for g in self.val.graph_lists]
-        self.test.graph_lists = [
-            wl_positional_encoding(g) for g in self.test.graph_lists
-        ]
+
+        self.graphs = [wl_positional_encoding(g) for g in self.graphs]

@@ -100,6 +100,40 @@ def perform_experiment(dataset_name):
     indexes = load_indexes(dataset_name)
     assert len(indexes) == K_FOLD, "Re-generate splits for new K_FOLD."
 
+    dataset = GraphsDataset(dataset_name)
+    # add to config info about dataset
+    train_config["net_params"]["max_wl_role_index"] = dataset.max_num_node
+    train_config["net_params"]["num_classes"] = dataset.num_classes
+    train_config["net_params"]["num_node_type"] = dataset.num_node_type
+    train_config["net_params"]["num_edge_type"] = dataset.num_edge_type
+
+    # prepare dataset
+    if train_config["net_params"]["lap_pos_enc"]:
+        st = time.time()
+        print("[!] Adding Laplacian positional encoding.")
+        dataset._add_laplacian_positional_encodings(
+            train_config["net_params"]["pos_enc_dim"]
+        )
+        print("Time LapPE:", time.time() - st)
+
+    if train_config["net_params"]["wl_pos_enc"]:
+        st = time.time()
+        print("[!] Adding WL positional encoding.")
+        dataset._add_wl_positional_encodings()
+        print("Time WL PE:", time.time() - st)
+
+    if train_config["net_params"]["full_graph"]:
+        st = time.time()
+        print("[!] Converting the given graphs to full graphs..")
+        dataset._make_full_graph()
+        print("Time taken to convert to full graphs:", time.time() - st)
+
+    if train_config["net_params"]["self_loop"]:
+        st = time.time()
+        print("[!] Converting the given graphs, adding self loops..")
+        dataset._add_self_loops()
+        print("Time taken to add self loops:", time.time() - st)
+
     # loop over splits
     scores = []
     for i, fold in enumerate(indexes):
@@ -116,15 +150,13 @@ def perform_experiment(dataset_name):
                 train_config["params"].update(param)
                 for net_param in net_params:
                     train_config["net_params"].update(net_param)
-                    dataset = GraphsDataset(
-                        dataset_name, train_idx, val_idx, val_idx
+                    dataset.upload_indexes(
+                        train_idx, val_idx, val_idx
                     )  # test_idx <- val_idx
                     acc = train_graph_transformer(dataset, train_config)
                     if acc > best_acc:
                         best_acc = acc
                         best_params = (param.copy(), net_param.copy())
-
-                    del dataset
 
             train_config["params"].update(best_params[0])
             train_config["net_params"].update(best_params[1])
@@ -134,15 +166,15 @@ def perform_experiment(dataset_name):
         test_idx = fold["test"]
         for _ in range(R_EVALUATION):
             train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
-            dataset = GraphsDataset(dataset_name, train_idx, val_idx, test_idx)
+            dataset.upload_indexes(train_idx, val_idx, test_idx)
             acc = train_graph_transformer(dataset, train_config)
             scores_r += acc
 
-            del dataset
         scores_r /= R_EVALUATION
         print(f"MEAN SCORE = {scores_r} in FOLD {i}")
         scores.append(scores_r)
 
+    del dataset
     # evaluate model
     mean = np.mean(scores)
     std = np.std(scores)
