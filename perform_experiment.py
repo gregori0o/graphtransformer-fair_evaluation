@@ -115,9 +115,13 @@ def perform_experiment(dataset_name):
 
     config = {
         "config_path": "configs/zinc_config.json",
-        "net_params_grid": {"lap_pos_enc": [True, False]},
-        "params_grid": {"epochs": [2, 1]},
-        "tune_hyperparameters": False,
+        "net_params_grid": {"in_feat_dropout": [0.0, 0.3], "dropout": [0.0, 0.3]},
+        "params_grid": {
+            "init_lr": [0.007, 0.0007, 0.00007],
+            "lr_reduce_factor": [0.5, 0.2, 0.05],
+            "weight_decay": [0.0, 0.5],
+        },
+        "tune_hyperparameters": True,
     }
 
     with open(config["config_path"], "r") as f:
@@ -140,6 +144,8 @@ def perform_experiment(dataset_name):
 
     # loop over splits
     scores = []
+
+    tuning_result = {}
     for i, fold in enumerate(indexes):
         print(f"FOLD {i}")
         needs_new_dataset = False
@@ -180,6 +186,7 @@ def perform_experiment(dataset_name):
 
             train_config["params"].update(best_params[0])
             train_config["net_params"].update(best_params[1])
+            tuning_result[i] = {"params": best_params[0], "net_params": best_params[1]}
 
         if needs_new_dataset:
             dataset = GraphsDataset(dataset_name)
@@ -208,6 +215,8 @@ def perform_experiment(dataset_name):
     print(f"STD score: {std}")
 
     train_config["dataset_name"] = dataset_name.value
+    train_config["run_config"] = config
+    train_config["tune_hyperparameters"] = tuning_result
     train_config["mean_score"] = mean
     train_config["std_score"] = std
     del train_config["net_params"]["device"]
