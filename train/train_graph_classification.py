@@ -11,12 +11,6 @@ import torch.nn.functional as F
 from train.metrics import MAE, accuracy_TU
 
 
-def one_hot(labels, num):
-    if num <= 1:
-        return labels
-    return F.one_hot(labels.reshape(-1).long(), num).float()
-
-
 def train_epoch(model, optimizer, device, data_loader, epoch):
     model.train()
     epoch_loss = 0
@@ -46,7 +40,7 @@ def train_epoch(model, optimizer, device, data_loader, epoch):
         batch_scores = model.forward(
             batch_graphs, batch_x, batch_e, batch_lap_pos_enc, batch_wl_pos_enc
         )
-        loss = model.loss(batch_scores, one_hot(batch_targets, model.num_classes))
+        loss = model.loss(batch_scores, batch_targets.long())
         loss.backward()
         optimizer.step()
         epoch_loss += loss.detach().item()
@@ -85,7 +79,7 @@ def evaluate_network(model, device, data_loader, epoch):
             batch_scores = model.forward(
                 batch_graphs, batch_x, batch_e, batch_lap_pos_enc, batch_wl_pos_enc
             )
-            loss = model.loss(batch_scores, one_hot(batch_targets, model.num_classes))
+            loss = model.loss(batch_scores, batch_targets.long())
             epoch_test_loss += loss.detach().item()
             if model.num_classes == 1:
                 epoch_test_score += MAE(batch_scores, batch_targets)
