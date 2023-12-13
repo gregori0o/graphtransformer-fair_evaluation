@@ -227,7 +227,7 @@ class GraphsDataset(torch.utils.data.Dataset):
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
-        data_dir = f"data/{DATASETS_DIR}/{self.name}/"
+        data_dir = f"/net/tscratch/people/plgglegeza/data/{DATASETS_DIR}/{self.name}/"
         self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
         self.size = len(self.tu_dataset)
         self.max_num_node = self.tu_dataset.max_num_node
