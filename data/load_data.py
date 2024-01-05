@@ -226,7 +226,7 @@ class SplitDataset(torch.utils.data.Dataset):
 
 class GraphsDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_name):
-        LIMIT = 300
+        LIMIT = 50
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
