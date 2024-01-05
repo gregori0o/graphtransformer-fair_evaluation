@@ -39,7 +39,8 @@ class GraphTransformerNet(nn.Module):
         if self.wl_pos_enc:
             self.embedding_wl_pos_enc = nn.Embedding(max_wl_role_index, hidden_dim)
 
-        self.embedding_h = nn.Embedding(num_node_type, hidden_dim)
+        # self.embedding_h = nn.Embedding(num_node_type, hidden_dim)
+        self.embedding_h = nn.Linear(1000, hidden_dim)
 
         if self.edge_feat:
             self.embedding_e = nn.Embedding(num_edge_type, hidden_dim)

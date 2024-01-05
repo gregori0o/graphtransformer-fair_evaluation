@@ -11,6 +11,7 @@ import networkx as nx
 import numpy as np
 import torch
 from dgl.data import TUDataset
+from NeuroGraph.datasets import NeuroGraphDataset
 from scipy import sparse as sp
 
 DATASETS_DIR = Path("datasets")
@@ -28,6 +29,7 @@ class DatasetName(Enum):
     REDDIT_BINARY = "REDDIT-BINARY"
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
+    NEURAL = "HCPGender"
 
 
 def load_indexes(dataset_name: DatasetName):
@@ -224,20 +226,23 @@ class SplitDataset(torch.utils.data.Dataset):
 
 class GraphsDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_name):
+        LIMIT = 300
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
-        data_dir = f"/net/tscratch/people/plgglegeza/data/{DATASETS_DIR}/{self.name}/"
-        self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
-        self.size = len(self.tu_dataset)
-        self.max_num_node = self.tu_dataset.max_num_node
-        self.num_classes = self.tu_dataset.num_labels
-        if self.num_classes is None:
-            self.num_classes = 1  # regression
+        data_dir = f"data/{DATASETS_DIR}/{self.name}/"
+        dataset = NeuroGraphDataset(name=self.name, root=data_dir)[:LIMIT]
+        # self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
+        self.size = len(dataset)
+        self.max_num_node = 1000
         self.num_edge_type = 1  # updated in _create_dataset_from_indexes
         self.num_node_type = 1  # updated in _create_dataset_from_indexes
 
-        self.graphs, self.labels = self._load_graphs()
+        self.labels = [graph.y for graph in dataset]
+        self.labels = torch.tensor(self.labels).long()
+        self.num_classes = max([label for label in self.labels]) + 1
+
+        self.graphs = self._load_graphs(dataset)
         self.train = None
         self.val = None
         self.test = None
@@ -246,32 +251,25 @@ class GraphsDataset(torch.utils.data.Dataset):
         print("[I] Finished loading.")
         print("[I] Data load time: {:.4f}s".format(time.time() - start))
 
-    def _load_graphs(self):
+    def _load_graphs(self, dataset):
         graphs = []
-        labels = []
-        for idx in range(self.size):
-            g, l = self.tu_dataset[idx]
-            node_labels = g.ndata.get("node_labels")
-            g.ndata["feat"] = (
-                torch.zeros(g.num_nodes(), dtype=torch.long)
-                if node_labels is None
-                else node_labels.reshape(-1).long()
-            )
-            self.num_node_type = max(
-                self.num_node_type, max(g.ndata["feat"].numpy()) + 1
-            )
-            edge_labels = g.edata.get("edge_labels")
-            g.edata["feat"] = (
-                torch.zeros(g.num_edges(), dtype=torch.long)
-                if edge_labels is None
-                else edge_labels.reshape(-1).long()
-            )
+        for graph in dataset:
+            src, dst = graph.edge_index
+            num_nodes = graph.num_nodes
+            adj = torch.zeros((num_nodes, num_nodes), dtype=torch.float)
+            adj[src, dst] = 1.0
+            # for i in range(num_nodes):
+            #     adj[i, i] = 1.0
+            adj = adj.nonzero(as_tuple=True)
+            g = dgl.graph(adj, num_nodes=num_nodes)
+
+            g.ndata["feat"] = graph["x"].float()  # embedding of node features
+            g.edata["feat"] = torch.zeros(g.num_edges(), dtype=torch.long)
             self.num_edge_type = max(
                 self.num_edge_type, max(g.edata["feat"].numpy()) + 1
             )
             graphs.append(g)
-            labels.append(float(l))
-        return graphs, labels
+        return graphs
 
     def upload_indexes(self, train_idx, val_idx, test_idx):
         train_graphs = [self.graphs[ix] for ix in train_idx]
