@@ -226,12 +226,12 @@ class SplitDataset(torch.utils.data.Dataset):
 
 class GraphsDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_name):
-        LIMIT = 300
+        # LIMIT = 300
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
         data_dir = f"data/{DATASETS_DIR}/{self.name}/"
-        dataset = NeuroGraphDataset(name=self.name, root=data_dir)[:LIMIT]
+        dataset = NeuroGraphDataset(name=self.name, root=data_dir)  # [:LIMIT]
         # self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
         self.size = len(dataset)
         self.max_num_node = 1000
