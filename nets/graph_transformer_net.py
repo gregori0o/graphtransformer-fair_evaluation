@@ -114,5 +114,5 @@ class GraphTransformerNet(nn.Module):
             loss = F.l1_loss(scores, targets)
             # loss = F.mse_loss(scores, targets)
         else:
-            loss = F.cross_entropy(scores, targets.squeeze())
+            loss = F.cross_entropy(scores, targets.squeeze(1))
         return loss

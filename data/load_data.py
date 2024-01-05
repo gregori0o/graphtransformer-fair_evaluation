@@ -226,7 +226,7 @@ class SplitDataset(torch.utils.data.Dataset):
 
 class GraphsDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_name):
-        LIMIT = 50
+        LIMIT = 300
         self.name = dataset_name.value
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
@@ -235,12 +235,12 @@ class GraphsDataset(torch.utils.data.Dataset):
         # self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
         self.size = len(dataset)
         self.max_num_node = 1000
+        self.num_classes = 2
         self.num_edge_type = 1  # updated in _create_dataset_from_indexes
         self.num_node_type = 1  # updated in _create_dataset_from_indexes
 
         self.labels = [graph.y for graph in dataset]
         self.labels = torch.tensor(self.labels).long()
-        self.num_classes = max([label for label in self.labels]) + 1
 
         self.graphs = self._load_graphs(dataset)
         self.train = None
