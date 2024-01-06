@@ -54,7 +54,7 @@ def perform_experiment(dataset_name):
             "lr_reduce_factor": [0.5, 0.2, 0.05],
             "weight_decay": [0.0, 0.5],
         },
-        "tune_hyperparameters": False,
+        "tune_hyperparameters": True,
     }
 
     with open(config["config_path"], "r") as f:
@@ -129,9 +129,6 @@ def perform_experiment(dataset_name):
         test_idx = fold["test"]
         for _ in range(R_EVALUATION):
             train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
-            # train_idx = list(range(0, 40))
-            # val_idx = list(range(40, 45))
-            # test_idx = list(range(45, 50))
             dataset.upload_indexes(train_idx, val_idx, test_idx)
             acc = train_graph_transformer(dataset, train_config)
             scores_r += acc
