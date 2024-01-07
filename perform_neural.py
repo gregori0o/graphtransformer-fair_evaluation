@@ -49,13 +49,15 @@ def perform_experiment(dataset_name):
     config = {
         "config_path": "configs/zinc_config.json",
         "net_params_grid": {
-            "in_feat_dropout": [0.0, 0.15, 0.3],
-            "dropout": [0.0, 0.15],
+            # "in_feat_dropout": [0.2, 0.3],
+            # "dropout": [0.0, 0.2],
+            "L": [6, 10, 14],
+            "n_heads": [4, 8, 12],
+            "hidden_dim": [64, 128],
+            "out_dim": [64, 128],
         },
-        "params_grid": {
-            "weight_decay": [0.0, 0.2],
-        },
-        "tune_hyperparameters": True,
+        "params_grid": {},
+        "tune_hyperparameters": False,
     }
 
     with open(config["config_path"], "r") as f:

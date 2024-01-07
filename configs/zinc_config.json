@@ -6,7 +6,7 @@
     
     "params": {
         "seed": 41,
-        "epochs": 25,
+        "epochs": 50,
         "batch_size": 4,
         "init_lr": 7e-5,
         "lr_reduce_factor": 0.5,
@@ -18,14 +18,14 @@
     },
     
     "net_params": {
-        "L": 10,
-        "n_heads": 8,
-        "hidden_dim": 64,
+        "L": 14,
+        "n_heads": 12,
+        "hidden_dim": 128,
         "out_dim": 64,
         "edge_feat": true,
         "residual": true,
         "readout": "mean",
-        "in_feat_dropout": 0.0,
+        "in_feat_dropout": 0.3,
         "dropout": 0.0,
         "layer_norm": false,
         "batch_norm": true,
