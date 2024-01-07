@@ -1,0 +1,46 @@
+Dataset: HCPGender,
+Model: GraphTransformer
+
+params={'seed': 41, 'epochs': 25, 'batch_size': 4, 'init_lr': 0.007, 'lr_reduce_factor': 0.2, 'lr_schedule_patience': 15, 'min_lr': 1e-06, 'weight_decay': 0.5, 'print_epoch_interval': 5, 'max_time': 24}
+
+net_params={'L': 10, 'n_heads': 8, 'hidden_dim': 64, 'out_dim': 64, 'edge_feat': True, 'residual': True, 'readout': 'mean', 'in_feat_dropout': 0.3, 'dropout': 0.3, 'layer_norm': False, 'batch_norm': True, 'self_loop': False, 'lap_pos_enc': True, 'pos_enc_dim': 8, 'wl_pos_enc': False, 'full_graph': False, 'max_wl_role_index': 1000, 'num_classes': 2, 'num_node_type': 1, 'num_edge_type': 1, 'device': device(type='cuda'), 'gpu_id': 0, 'batch_size': 4, 'total_param': 651026}
+
+GraphTransformerNet(
+  (embedding_lap_pos_enc): Linear(in_features=8, out_features=64, bias=True)
+  (embedding_h): Linear(in_features=1000, out_features=64, bias=True)
+  (embedding_e): Embedding(1, 64)
+  (in_feat_dropout): Dropout(p=0.3, inplace=False)
+  (layers): ModuleList(
+    (0): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (1): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (2): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (3): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (4): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (5): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (6): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (7): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (8): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+    (9): GraphTransformerLayer(in_channels=64, out_channels=64, heads=8, residual=True)
+  )
+  (MLP_layer): MLPReadout(
+    (FC_layers): ModuleList(
+      (0): Linear(in_features=64, out_features=32, bias=True)
+      (1): Linear(in_features=32, out_features=16, bias=True)
+      (2): Linear(in_features=16, out_features=2, bias=True)
+    )
+  )
+)
+
+Total Parameters: 651026
+
+
+    FINAL RESULTS
+TEST SCORE: 0.5436
+TRAIN SCORE: 0.5374
+
+
+    Convergence Time (Epochs): 24.0000
+Total Time Taken: 0.3920 hrs
+Average Time Per Epoch: 55.3894 s
+
+
