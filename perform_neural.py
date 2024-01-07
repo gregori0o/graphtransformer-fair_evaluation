@@ -48,11 +48,12 @@ def prepare_dataset(dataset, train_config):
 def perform_experiment(dataset_name):
     config = {
         "config_path": "configs/zinc_config.json",
-        "net_params_grid": {"in_feat_dropout": [0.0, 0.3], "dropout": [0.0, 0.3]},
+        "net_params_grid": {
+            "in_feat_dropout": [0.0, 0.15, 0.3],
+            "dropout": [0.0, 0.15],
+        },
         "params_grid": {
-            "init_lr": [0.007, 0.0007, 0.00007],
-            "lr_reduce_factor": [0.5, 0.2, 0.05],
-            "weight_decay": [0.0, 0.5],
+            "weight_decay": [0.0, 0.2],
         },
         "tune_hyperparameters": True,
     }
