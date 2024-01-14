@@ -146,6 +146,8 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     )
 
     # At any point you can hit Ctrl + C to break out of training early.
+    best_val_score = 0
+    best_test_score = 0
     try:
         with tqdm(range(params["epochs"])) as t:
             for epoch in t:
@@ -164,6 +166,9 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
                 _, epoch_test_score = evaluate_network(
                     model, device, test_loader, epoch
                 )
+                if epoch_val_score > best_val_score:
+                    best_val_score = epoch_val_score
+                    best_test_score = epoch_test_score
 
                 epoch_train_losses.append(epoch_train_loss)
                 epoch_val_losses.append(epoch_val_loss)
@@ -231,6 +236,8 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     _, train_score = evaluate_network(model, device, train_loader, epoch)
     print("Test SCORE: {:.4f}".format(test_score))
     print("Train SCORE: {:.4f}".format(train_score))
+    print("Best Val SCORE: {:.4f}".format(best_val_score))
+    print("Best Test SCORE: {:.4f}".format(best_test_score))
     print("Convergence Time (Epochs): {:.4f}".format(epoch))
     print("TOTAL TIME TAKEN: {:.4f}s".format(time.time() - t0))
     print("AVG TIME PER EPOCH: {:.4f}s".format(np.mean(per_epoch_time)))
@@ -259,7 +266,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
             )
         )
 
-    return test_score
+    return best_test_score
 
 
 def train_graph_transformer(dataset, config=None, config_file=None):
