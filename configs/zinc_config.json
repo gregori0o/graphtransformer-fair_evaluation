@@ -18,8 +18,8 @@
     },
     
     "net_params": {
-        "L": 14,
-        "n_heads": 12,
+        "L": 12,
+        "n_heads": 8,
         "hidden_dim": 128,
         "out_dim": 64,
         "edge_feat": true,
