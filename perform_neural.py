@@ -64,9 +64,9 @@ def perform_experiment(dataset_name):
         train_config = json.load(f)
     train_config["out_dir"] = f"out/{dataset_name.value}/"
 
-    # load indexes
-    indexes = load_indexes(dataset_name)
-    assert len(indexes) == K_FOLD, "Re-generate splits for new K_FOLD."
+    # # load indexes
+    # indexes = load_indexes(dataset_name)
+    # assert len(indexes) == K_FOLD, "Re-generate splits for new K_FOLD."
 
     dataset = GraphsDataset(dataset_name)
     # add to config info about dataset
@@ -75,71 +75,86 @@ def perform_experiment(dataset_name):
     train_config["net_params"]["num_node_type"] = dataset.num_node_type
     train_config["net_params"]["num_edge_type"] = dataset.num_edge_type
 
+    scores = []
+
+    train_tmp, test_indices = train_test_split(
+        list(range(len(dataset.graphs))),
+        test_size=0.2,
+        stratify=dataset.labels,
+        random_state=123,
+        shuffle=True,
+    )
+    train_labels = [l for i, l in enumerate(dataset.labels) if i in train_tmp]
+    train_tmp = np.sort(train_tmp)
+    train_indices, val_indices = train_test_split(
+        train_tmp,
+        test_size=0.125,
+        stratify=train_labels,
+        random_state=123,
+        shuffle=True,
+    )
+
+    print("train_indices", len(train_indices))
+    print("val_indices", len(val_indices))
+    print("test_indices", len(test_indices))
+
     # prepare dataset
     prepare_dataset(dataset, train_config)
 
-    # loop over splits
-    scores = []
-
     tuning_result = {}
-    for i, fold in enumerate(indexes):
-        print(f"FOLD {i}")
-        needs_new_dataset = False
+    print("Start experiment")
+    needs_new_dataset = False
 
-        ## get best model for train data
-        if config.get("tune_hyperparameters"):
-            if (
-                "lap_pos_enc" in config["net_params_grid"]
-                or "wl_pos_enc" in config["net_params_grid"]
-                or "full_graph" in config["net_params_grid"]
-                or "self_loop" in config["net_params_grid"]
-            ):
-                needs_new_dataset = True
-            best_acc = 0
-            best_params = ({}, {})
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
-            params = get_all_params(config["params_grid"])
-            net_params = get_all_params(config["net_params_grid"])
-            for param in params:
-                train_config["params"].update(param)
-                for net_param in net_params:
-                    train_config["net_params"].update(net_param)
-                    if (
-                        train_config["net_params"]["lap_pos_enc"]
-                        == train_config["net_params"]["wl_pos_enc"]
-                    ):
-                        continue
-                    if needs_new_dataset:
-                        dataset = GraphsDataset(dataset_name)
-                        prepare_dataset(dataset, train_config)
-                    dataset.upload_indexes(
-                        train_idx, val_idx, val_idx
-                    )  # test_idx <- val_idx
-                    acc = train_graph_transformer(dataset, train_config)
-                    if acc > best_acc:
-                        best_acc = acc
-                        best_params = (param.copy(), net_param.copy())
+    ## get best model for train data
+    if config.get("tune_hyperparameters"):
+        if (
+            "lap_pos_enc" in config["net_params_grid"]
+            or "wl_pos_enc" in config["net_params_grid"]
+            or "full_graph" in config["net_params_grid"]
+            or "self_loop" in config["net_params_grid"]
+        ):
+            needs_new_dataset = True
+        best_acc = 0
+        best_params = ({}, {})
+        params = get_all_params(config["params_grid"])
+        net_params = get_all_params(config["net_params_grid"])
+        for param in params:
+            train_config["params"].update(param)
+            for net_param in net_params:
+                train_config["net_params"].update(net_param)
+                if (
+                    train_config["net_params"]["lap_pos_enc"]
+                    == train_config["net_params"]["wl_pos_enc"]
+                ):
+                    continue
+                if needs_new_dataset:
+                    dataset = GraphsDataset(dataset_name)
+                    prepare_dataset(dataset, train_config)
+                dataset.upload_indexes(
+                    train_indices, val_indices, val_indices
+                )  # test_idx <- val_idx
+                acc = train_graph_transformer(dataset, train_config)
+                if acc > best_acc:
+                    best_acc = acc
+                    best_params = (param.copy(), net_param.copy())
 
-            train_config["params"].update(best_params[0])
-            train_config["net_params"].update(best_params[1])
-            tuning_result[i] = {"params": best_params[0], "net_params": best_params[1]}
+        train_config["params"].update(best_params[0])
+        train_config["net_params"].update(best_params[1])
+        tuning_result[0] = {"params": best_params[0], "net_params": best_params[1]}
 
-        if needs_new_dataset:
-            dataset = GraphsDataset(dataset_name)
-            prepare_dataset(dataset, train_config)
-        # evaluate model R times
-        scores_r = 0
-        test_idx = fold["test"]
-        for _ in range(R_EVALUATION):
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
-            dataset.upload_indexes(train_idx, val_idx, test_idx)
-            acc = train_graph_transformer(dataset, train_config)
-            scores_r += acc
+    if needs_new_dataset:
+        dataset = GraphsDataset(dataset_name)
+        prepare_dataset(dataset, train_config)
+    # evaluate model R times
+    scores_r = 0
+    for _ in range(R_EVALUATION):
+        dataset.upload_indexes(train_indices, val_indices, test_indices)
+        acc = train_graph_transformer(dataset, train_config)
+        scores_r += acc
 
-        scores_r /= R_EVALUATION
-        print(f"MEAN SCORE = {scores_r} in FOLD {i}")
-        scores.append(scores_r)
-        break
+    scores_r /= R_EVALUATION
+    print(f"MEAN SCORE = {scores_r}")
+    scores.append(scores_r)
 
     del dataset
     # evaluate model
