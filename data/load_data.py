@@ -29,7 +29,7 @@ class DatasetName(Enum):
     REDDIT_BINARY = "REDDIT-BINARY"
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
-    NEURAL = "HCPGender"
+    NEURAL = "HCPAge"
 
 
 def load_indexes(dataset_name: DatasetName):
@@ -235,7 +235,7 @@ class GraphsDataset(torch.utils.data.Dataset):
         # self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
         self.size = len(dataset)
         self.max_num_node = 1000
-        self.num_classes = 2
+        self.num_classes = 3
         self.num_edge_type = 1  # updated in _create_dataset_from_indexes
         self.num_node_type = 1  # updated in _create_dataset_from_indexes
 
