@@ -6,9 +6,10 @@ import numpy as np
 from sklearn.model_selection import train_test_split
 
 from data.load_data import DatasetName, GraphsDataset, load_indexes
-from evaluation_config import K_FOLD, R_EVALUATION
 from train_graph_transformer import train_graph_transformer
 from utils import NpEncoder
+
+R_EVALUATION = 4
 
 
 def get_all_params(param_grid):
@@ -146,15 +147,11 @@ def perform_experiment(dataset_name):
         dataset = GraphsDataset(dataset_name)
         prepare_dataset(dataset, train_config)
     # evaluate model R times
-    scores_r = 0
     for _ in range(R_EVALUATION):
+        train_config["params"]["seed"] += 1
         dataset.upload_indexes(train_indices, val_indices, test_indices)
         acc = train_graph_transformer(dataset, train_config)
-        scores_r += acc
-
-    scores_r /= R_EVALUATION
-    print(f"MEAN SCORE = {scores_r}")
-    scores.append(scores_r)
+        scores.append(acc)
 
     del dataset
     # evaluate model
