@@ -1,8 +1,5 @@
 python-dateutil
-torch
-torchvision
 pillow
-dgl
 numpy
 matplotlib
 tensorboard
