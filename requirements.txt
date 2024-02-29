@@ -6,7 +6,7 @@ tensorboard
 tensorboardx==2.6
 future
 absl-py
-networkx2.6.3
+networkx==2.6.3
 scikit-learn==1.0.2
 scipy==1.7.3
 notebook
