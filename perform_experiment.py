@@ -121,7 +121,7 @@ def perform_experiment(dataset_name):
             "lr_reduce_factor": [0.5, 0.2, 0.05],
             "weight_decay": [0.0, 0.5],
         },
-        "tune_hyperparameters": True,
+        "tune_hyperparameters": False,
     }
 
     with open(config["config_path"], "r") as f:
@@ -229,13 +229,13 @@ def perform_experiment(dataset_name):
 
 
 if __name__ == "__main__":
-    # perform_experiment(DatasetName.DD)
-    # perform_experiment(DatasetName.NCI1)
+    perform_experiment(DatasetName.DD)
+    perform_experiment(DatasetName.NCI1)
     perform_experiment(DatasetName.ENZYMES)
     perform_experiment(DatasetName.PROTEINS)
-    # perform_experiment(DatasetName.IMDB_BINARY)
-    # perform_experiment(DatasetName.IMDB_MULTI)
-    # perform_experiment(DatasetName.REDDIT_BINARY)
-    # perform_experiment(DatasetName.REDDIT_MULTI)
-    # perform_experiment(DatasetName.COLLAB)
-    # perform_experiment(DatasetName.ZINC)
+    perform_experiment(DatasetName.IMDB_BINARY)
+    perform_experiment(DatasetName.IMDB_MULTI)
+    perform_experiment(DatasetName.REDDIT_BINARY)
+    perform_experiment(DatasetName.REDDIT_MULTI)
+    perform_experiment(DatasetName.COLLAB)
+    perform_experiment(DatasetName.ZINC)
