@@ -124,7 +124,11 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
     epoch_train_SCOREs, epoch_val_SCOREs = [], []
 
     # import train and evaluate functions
-    from train.train_graph_classification import evaluate_network, train_epoch
+    from train.train_graph_classification import (
+        evaluate_network,
+        full_evaluate_classification,
+        train_epoch,
+    )
 
     train_loader = DataLoader(
         trainset,
@@ -229,6 +233,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
 
     _, test_score = evaluate_network(model, device, test_loader, epoch)
     _, train_score = evaluate_network(model, device, train_loader, epoch)
+    scores = full_evaluate_classification(model, device, test_loader, epoch)
     print("Test SCORE: {:.4f}".format(test_score))
     print("Train SCORE: {:.4f}".format(train_score))
     print("Convergence Time (Epochs): {:.4f}".format(epoch))
@@ -259,7 +264,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
             )
         )
 
-    return test_score
+    return scores
 
 
 def train_graph_transformer(dataset, config=None, config_file=None):

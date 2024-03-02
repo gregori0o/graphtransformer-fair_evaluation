@@ -1,5 +1,6 @@
 import itertools
 import json
+import os
 import time
 
 import numpy as np
@@ -10,68 +11,70 @@ from evaluation_config import K_FOLD, R_EVALUATION
 from train_graph_transformer import train_graph_transformer
 from utils import NpEncoder
 
-configurations = {
-    DatasetName.ZINC: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.DD: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.NCI1: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.PROTEINS: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.ENZYMES: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.IMDB_BINARY: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.IMDB_MULTI: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.REDDIT_BINARY: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.REDDIT_MULTI: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-    DatasetName.COLLAB: {
-        "config_path": "configs/zinc_config.json",
-        "net_parans_grid": {},
-        "params_grid": {},
-        "tune_hyperparameters": False,
-    },
-}
+# configurations = {
+#     DatasetName.ZINC: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.DD: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.NCI1: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.PROTEINS: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.ENZYMES: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.IMDB_BINARY: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.IMDB_MULTI: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.REDDIT_BINARY: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.REDDIT_MULTI: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+#     DatasetName.COLLAB: {
+#         "config_path": "configs/zinc_config.json",
+#         "net_parans_grid": {},
+#         "params_grid": {},
+#         "tune_hyperparameters": False,
+#     },
+# }
+
+experiment_name = time.strftime("%Y_%m_%d_%Hh%Mm%Ss")
 
 
 def get_all_params(param_grid):
@@ -114,13 +117,13 @@ def perform_experiment(dataset_name):
     #     raise ValueError(f"There is no configuration for {dataset_name} dataset.")
 
     config = {
-        "config_path": "configs/zinc_config.json",
-        "net_params_grid": {"in_feat_dropout": [0.0, 0.3], "dropout": [0.0, 0.3]},
-        "params_grid": {
-            "init_lr": [0.007, 0.0007, 0.00007],
-            "lr_reduce_factor": [0.5, 0.2, 0.05],
-            "weight_decay": [0.0, 0.5],
-        },
+        "config_path": "configs/universal_config.json",
+        # "net_params_grid": {"in_feat_dropout": [0.0, 0.3], "dropout": [0.0, 0.3]},
+        # "params_grid": {
+        #     "init_lr": [0.007, 0.0007, 0.00007],
+        #     "lr_reduce_factor": [0.5, 0.2, 0.05],
+        #     "weight_decay": [0.0, 0.5],
+        # },
         "tune_hyperparameters": False,
     }
 
@@ -143,7 +146,12 @@ def perform_experiment(dataset_name):
     prepare_dataset(dataset, train_config)
 
     # loop over splits
-    scores = []
+    scores = {
+        "accuracy": [],
+        "f1": [],
+        "precision": [],
+        "recall": [],
+    }
 
     tuning_result = {}
     for i, fold in enumerate(indexes):
@@ -179,7 +187,7 @@ def perform_experiment(dataset_name):
                     dataset.upload_indexes(
                         train_idx, val_idx, val_idx
                     )  # test_idx <- val_idx
-                    acc = train_graph_transformer(dataset, train_config)
+                    acc = train_graph_transformer(dataset, train_config)["accuracy"]
                     if acc > best_acc:
                         best_acc = acc
                         best_params = (param.copy(), net_param.copy())
@@ -192,37 +200,50 @@ def perform_experiment(dataset_name):
             dataset = GraphsDataset(dataset_name)
             prepare_dataset(dataset, train_config)
         # evaluate model R times
-        scores_r = 0
+        scores_r = {
+            "accuracy": 0,
+            "f1": 0,
+            "precision": 0,
+            "recall": 0,
+        }
         test_idx = fold["test"]
         for _ in range(R_EVALUATION):
             train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
             dataset.upload_indexes(train_idx, val_idx, test_idx)
-            acc = train_graph_transformer(dataset, train_config)
-            scores_r += acc
-
-        scores_r /= R_EVALUATION
-        print(f"MEAN SCORE = {scores_r} in FOLD {i}")
-        scores.append(scores_r)
+            scores_class = train_graph_transformer(dataset, train_config)
+            for key in scores_r.keys():
+                scores_r[key] += scores_class[key]
+        for key in scores_r.keys():
+            scores_r[key] /= R_EVALUATION
+        print(f"MEAN SCORES = {scores_r} in FOLD {i}")
+        for key in scores_r.keys():
+            scores[key].append(scores_r[key])
 
     del dataset
     # evaluate model
-    mean = np.mean(scores)
-    std = np.std(scores)
+    summ = {}
+    for key in scores.keys():
+        summ[key] = {}
+        summ[key]["mean"] = np.mean(scores[key])
+        summ[key]["std"] = np.std(scores[key])
 
     # score is MAE for regression and ACC for other
     print(f"Evaluation of model on {dataset_name}")
-    print(f"Mean score: {mean}")
-    print(f"STD score: {std}")
+    print(f"Scores: {scores}")
+    print(f"Summary: {summ}")
 
     train_config["dataset_name"] = dataset_name.value
     train_config["run_config"] = config
     train_config["tune_hyperparameters"] = tuning_result
-    train_config["mean_score"] = mean
-    train_config["std_score"] = std
+    train_config["summary_scores"] = summ
+    train_config["scores"] = scores
+    train_config["r_evaluation"] = R_EVALUATION
+    train_config["k_fold"] = K_FOLD
     del train_config["net_params"]["device"]
     dumped = json.dumps(train_config, cls=NpEncoder)
+    os.makedirs(f"results/{experiment_name}", exist_ok=True)
     with open(
-        f"results/result_GT_{dataset_name.value}_{time.strftime('%Hh%Mm%Ss_on_%b_%d_%Y')}.json",
+        f"results/{experiment_name}/result_GT_{dataset_name.value}_{time.strftime('%Hh%Mm%Ss_on_%b_%d_%Y')}.json",
         "w",
     ) as f:
         f.write(dumped)
@@ -238,4 +259,3 @@ if __name__ == "__main__":
     perform_experiment(DatasetName.REDDIT_BINARY)
     perform_experiment(DatasetName.REDDIT_MULTI)
     perform_experiment(DatasetName.COLLAB)
-    perform_experiment(DatasetName.ZINC)
