@@ -169,7 +169,7 @@ def perform_experiment(dataset_name):
                 needs_new_dataset = True
             best_acc = 0
             best_params = ({}, {})
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
+            train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
             params = get_all_params(config["params_grid"])
             net_params = get_all_params(config["net_params_grid"])
             for param in params:
@@ -208,7 +208,7 @@ def perform_experiment(dataset_name):
         }
         test_idx = fold["test"]
         for _ in range(R_EVALUATION):
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.2)
+            train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
             dataset.upload_indexes(train_idx, val_idx, test_idx)
             scores_class = train_graph_transformer(dataset, train_config)
             for key in scores_r.keys():
