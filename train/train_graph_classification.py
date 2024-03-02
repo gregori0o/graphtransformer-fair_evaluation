@@ -117,8 +117,8 @@ def full_evaluate_classification(model, device, data_loader, epoch):
             batch_scores = model.forward(
                 batch_graphs, batch_x, batch_e, batch_lap_pos_enc, batch_wl_pos_enc
             )
-            list_targets.append(batch_targets.reshape(-1).detach().numpy())
-            list_predictions.append(batch_scores.detach().argmax(dim=1).numpy())
+            list_targets.append(batch_targets.reshape(-1).detach().cpu().numpy())
+            list_predictions.append(batch_scores.detach().argmax(dim=1).cpu().numpy())
     targets = np.concatenate(list_targets)
     predictions = np.concatenate(list_predictions)
     accuracy = accuracy_score(targets, predictions)
