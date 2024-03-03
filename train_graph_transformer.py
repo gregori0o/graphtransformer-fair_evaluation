@@ -12,6 +12,7 @@ import time
 
 import dgl
 import numpy as np
+import optuna
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -72,7 +73,7 @@ def view_model_param(MODEL_NAME, net_params):
 """
 
 
-def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
+def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
 
     t0 = time.time()
     per_epoch_time = []
@@ -168,6 +169,11 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs):
                 _, epoch_test_score = evaluate_network(
                     model, device, test_loader, epoch
                 )
+
+                if trial is not None:
+                    trial.report(epoch_val_score, epoch)
+                    if trial.should_prune():
+                        raise optuna.TrialPruned()
 
                 epoch_train_losses.append(epoch_train_loss)
                 epoch_val_losses.append(epoch_val_loss)
@@ -339,4 +345,6 @@ def train_graph_transformer(dataset, config=None, config_file=None):
         os.makedirs(out_dir + "configs")
 
     net_params["total_param"] = view_model_param(MODEL_NAME, net_params)
-    return train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs)
+    return train_val_pipeline(
+        MODEL_NAME, dataset, params, net_params, dirs, config.get("trial")
+    )

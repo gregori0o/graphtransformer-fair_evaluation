@@ -4,6 +4,8 @@ import os
 import time
 
 import numpy as np
+import optuna
+from optuna.trial import TrialState
 from sklearn.model_selection import train_test_split
 
 from data.load_data import DatasetName, GraphsDataset, load_indexes
@@ -11,76 +13,7 @@ from evaluation_config import K_FOLD, R_EVALUATION
 from train_graph_transformer import train_graph_transformer
 from utils import NpEncoder
 
-# configurations = {
-#     DatasetName.ZINC: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.DD: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.NCI1: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.PROTEINS: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.ENZYMES: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.IMDB_BINARY: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.IMDB_MULTI: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.REDDIT_BINARY: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.REDDIT_MULTI: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-#     DatasetName.COLLAB: {
-#         "config_path": "configs/zinc_config.json",
-#         "net_parans_grid": {},
-#         "params_grid": {},
-#         "tune_hyperparameters": False,
-#     },
-# }
-
 experiment_name = time.strftime("%Y_%m_%d_%Hh%Mm%Ss")
-
-
-def get_all_params(param_grid):
-    return [
-        dict(zip(param_grid.keys(), v)) for v in itertools.product(*param_grid.values())
-    ]
 
 
 def prepare_dataset(dataset, train_config):
@@ -111,6 +44,70 @@ def prepare_dataset(dataset, train_config):
         print("Time taken to add self loops:", time.time() - st)
 
 
+def find_best_params(train_config, loaded_dataset, dataset_name, fold):
+    def optuna_objective(trial):
+        ### Definition of the search space ###
+        train_config["params"]["init_lr"] = trial.suggest_float(
+            "init_lr", 1e-6, 1e-3, log=True
+        )
+        train_config["params"]["lr_reduce_factor"] = trial.suggest_float(
+            "lr_reduce_factor", 0.0, 1.0
+        )
+        train_config["params"]["weight_decay"] = trial.suggest_float(
+            "weight_decay", 0.0, 1.0
+        )
+        train_config["net_params"]["in_feat_dropout"] = trial.suggest_float(
+            "in_feat_dropout", 0.0, 1.0
+        )
+        train_config["net_params"]["dropout"] = trial.suggest_float("dropout", 0.0, 1.0)
+        train_config["net_params"]["L"] = trial.suggest_int("L", 5, 20)
+        ### End ###
+        train_config["trial"] = trial
+
+        # if there is "lap_pos_enc" or "wl_pos_enc" or "full_graph" or "self_loop" in search space
+        # then needs_new_dataset = True
+        needs_new_dataset = False
+
+        if needs_new_dataset:
+            dataset = GraphsDataset(dataset_name)
+            prepare_dataset(dataset, train_config)
+            dataset.upload_indexes(train_idx, val_idx, val_idx)  # test_idx <- val_idx
+        else:
+            dataset = loaded_dataset
+
+        acc = train_graph_transformer(dataset, train_config)["accuracy"]
+        return acc
+
+    train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
+    loaded_dataset.upload_indexes(train_idx, val_idx, val_idx)
+
+    study = optuna.create_study(direction="maximize")
+    study.optimize(optuna_objective, n_trials=10, timeout=None)
+    train_config["trial"] = None
+
+    pruned_trials = study.get_trials(deepcopy=False, states=[TrialState.PRUNED])
+    complete_trials = study.get_trials(deepcopy=False, states=[TrialState.COMPLETE])
+
+    print("Study statistics: ")
+    print("  Number of finished trials: ", len(study.trials))
+    print("  Number of pruned trials: ", len(pruned_trials))
+    print("  Number of complete trials: ", len(complete_trials))
+
+    print("Best trial:")
+    trial = study.best_trial
+
+    print("  Value: ", trial.value)
+
+    best_params = {"params": {}, "net_params": {}}
+    for key, value in trial.params.items():
+        if key in train_config["params"]:
+            best_params["params"][key] = value
+        else:
+            best_params["net_params"][key] = value
+
+    return best_params, trial.value
+
+
 def perform_experiment(dataset_name):
     # config = configurations.get(dataset_name)
     # if config is None:
@@ -118,12 +115,6 @@ def perform_experiment(dataset_name):
 
     config = {
         "config_path": "configs/universal_config.json",
-        # "net_params_grid": {"in_feat_dropout": [0.0, 0.3], "dropout": [0.0, 0.3]},
-        # "params_grid": {
-        #     "init_lr": [0.007, 0.0007, 0.00007],
-        #     "lr_reduce_factor": [0.5, 0.2, 0.05],
-        #     "weight_decay": [0.0, 0.5],
-        # },
         "tune_hyperparameters": False,
     }
 
@@ -160,41 +151,18 @@ def perform_experiment(dataset_name):
 
         ## get best model for train data
         if config.get("tune_hyperparameters"):
-            if (
-                "lap_pos_enc" in config["net_params_grid"]
-                or "wl_pos_enc" in config["net_params_grid"]
-                or "full_graph" in config["net_params_grid"]
-                or "self_loop" in config["net_params_grid"]
-            ):
-                needs_new_dataset = True
-            best_acc = 0
-            best_params = ({}, {})
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
-            params = get_all_params(config["params_grid"])
-            net_params = get_all_params(config["net_params_grid"])
-            for param in params:
-                train_config["params"].update(param)
-                for net_param in net_params:
-                    train_config["net_params"].update(net_param)
-                    if (
-                        train_config["net_params"]["lap_pos_enc"]
-                        == train_config["net_params"]["wl_pos_enc"]
-                    ):
-                        continue
-                    if needs_new_dataset:
-                        dataset = GraphsDataset(dataset_name)
-                        prepare_dataset(dataset, train_config)
-                    dataset.upload_indexes(
-                        train_idx, val_idx, val_idx
-                    )  # test_idx <- val_idx
-                    acc = train_graph_transformer(dataset, train_config)["accuracy"]
-                    if acc > best_acc:
-                        best_acc = acc
-                        best_params = (param.copy(), net_param.copy())
+            needs_new_dataset = True
+            best_params, best_acc = find_best_params(
+                train_config, dataset, dataset_name, fold
+            )
 
-            train_config["params"].update(best_params[0])
-            train_config["net_params"].update(best_params[1])
-            tuning_result[i] = {"params": best_params[0], "net_params": best_params[1]}
+            train_config["params"].update(best_params["params"])
+            train_config["net_params"].update(best_params["net_params"])
+            tuning_result[i] = {
+                "params": best_params["params"],
+                "net_params": best_params["net_params"],
+                "accuracy": best_acc,
+            }
 
         if needs_new_dataset:
             dataset = GraphsDataset(dataset_name)
@@ -227,7 +195,7 @@ def perform_experiment(dataset_name):
         summ[key]["mean"] = np.mean(scores[key])
         summ[key]["std"] = np.std(scores[key])
 
-    # score is MAE for regression and ACC for other
+    # scores are acc, precision, recall and F1
     print(f"Evaluation of model on {dataset_name}")
     print(f"Scores: {scores}")
     print(f"Summary: {summ}")
