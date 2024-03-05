@@ -30,9 +30,6 @@ class DatasetName(Enum):
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
     MOLHIV = "ogbg-molhiv"
-    MOLPCBA = "ogbg-molpcba"
-    PPA = "ogbg-ppa"
-    CODE = "ogbg-code2"
 
 
 def load_indexes(dataset_name: DatasetName):
@@ -238,7 +235,7 @@ class GraphsDataset(torch.utils.data.Dataset):
             self.num_classes = int(self.dgl_dataset.num_classes)
             self.size = len(self.dgl_dataset)
             self.graphs = self.dgl_dataset.graphs
-            self.labels = [float(label) for label in self.dgl_dataset.labels]
+            self.labels = [int(label) for label in self.dgl_dataset.labels]
             self.max_num_node = max([g.num_nodes() for g in self.graphs])
             self.num_node_type = get_atom_feature_dims()
             self.num_edge_type = get_bond_feature_dims()
