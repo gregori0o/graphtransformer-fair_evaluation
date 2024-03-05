@@ -11,6 +11,24 @@ from layers.graph_transformer_edge_layer import GraphTransformerLayer
 from layers.mlp_readout_layer import MLPReadout
 
 
+class NodeEdgeEmbedding(nn.Module):
+    def __init__(self, num_emb, out_dim):
+        super(NodeEdgeEmbedding, self).__init__()
+
+        if isinstance(num_emb, int):
+            self.embedding = nn.Embedding(num_emb, out_dim)
+        else:
+            self.embedding = nn.ModuleList([nn.Embedding(n, out_dim) for n in num_emb])
+
+    def forward(self, x):
+        if isinstance(self.embedding, nn.Embedding):
+            return self.embedding(x)
+        result = 0
+        for i in range(x.shape[1]):
+            result += self.embedding[i](x[:, i])
+        return result
+
+
 class GraphTransformerNet(nn.Module):
     def __init__(self, net_params):
         super().__init__()
@@ -39,10 +57,10 @@ class GraphTransformerNet(nn.Module):
         if self.wl_pos_enc:
             self.embedding_wl_pos_enc = nn.Embedding(max_wl_role_index, hidden_dim)
 
-        self.embedding_h = nn.Embedding(num_node_type, hidden_dim)
+        self.embedding_h = NodeEdgeEmbedding(num_node_type, hidden_dim)
 
         if self.edge_feat:
-            self.embedding_e = nn.Embedding(num_edge_type, hidden_dim)
+            self.embedding_e = NodeEdgeEmbedding(num_edge_type, hidden_dim)
         else:
             self.embedding_e = nn.Linear(1, hidden_dim)
 

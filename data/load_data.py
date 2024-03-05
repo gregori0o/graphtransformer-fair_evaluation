@@ -11,6 +11,8 @@ import networkx as nx
 import numpy as np
 import torch
 from dgl.data import TUDataset
+from ogb.graphproppred import DglGraphPropPredDataset
+from ogb.utils.features import get_atom_feature_dims, get_bond_feature_dims
 from scipy import sparse as sp
 
 DATASETS_DIR = Path("datasets")
@@ -18,7 +20,6 @@ DATA_SPLITS_DIR = Path("data_splits")
 
 
 class DatasetName(Enum):
-    ZINC = "ZINC_full"
     DD = "DD"
     NCI1 = "NCI1"
     PROTEINS = "PROTEINS_full"
@@ -28,6 +29,10 @@ class DatasetName(Enum):
     REDDIT_BINARY = "REDDIT-BINARY"
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
+    MOLHIV = "ogbg-molhiv"
+    MOLPCBA = "ogbg-molpcba"
+    PPA = "ogbg-ppa"
+    CODE = "ogbg-code2"
 
 
 def load_indexes(dataset_name: DatasetName):
@@ -228,16 +233,29 @@ class GraphsDataset(torch.utils.data.Dataset):
         start = time.time()
         print("[I] Loading dataset %s..." % (self.name))
         data_dir = f"/net/tscratch/people/plgglegeza/data/{DATASETS_DIR}/{self.name}/"
-        self.tu_dataset = TUDataset(self.name, raw_dir=data_dir)
-        self.size = len(self.tu_dataset)
-        self.max_num_node = self.tu_dataset.max_num_node
-        self.num_classes = self.tu_dataset.num_labels
-        if self.num_classes is None:
-            self.num_classes = 1  # regression
-        self.num_edge_type = 1  # updated in _create_dataset_from_indexes
-        self.num_node_type = 1  # updated in _create_dataset_from_indexes
+        if self.name.startswith("ogbg-"):
+            self.dgl_dataset = DglGraphPropPredDataset(name=self.name, root=data_dir)
+            self.num_classes = int(self.dgl_dataset.num_classes)
+            self.size = len(self.dgl_dataset)
+            self.graphs = self.dgl_dataset.graphs
+            self.labels = [float(label) for label in self.dgl_dataset.labels]
+            self.max_num_node = max([g.num_nodes() for g in self.graphs])
+            self.num_node_type = get_atom_feature_dims()
+            self.num_edge_type = get_bond_feature_dims()
+        else:
+            self.dgl_dataset = TUDataset(self.name, raw_dir=data_dir)
+            self.num_classes = self.dgl_dataset.num_labels
+            self.size = len(self.dgl_dataset)
 
-        self.graphs, self.labels = self._load_graphs()
+            # updated in _load_graphs
+            self.max_num_node = 0
+            self.num_edge_type = 1
+            self.num_node_type = 1
+
+            self.graphs, self.labels = self._load_graphs()
+            self.num_edge_type = int(self.num_edge_type)
+            self.num_node_type = int(self.num_node_type)
+
         self.train = None
         self.val = None
         self.test = None
@@ -250,7 +268,8 @@ class GraphsDataset(torch.utils.data.Dataset):
         graphs = []
         labels = []
         for idx in range(self.size):
-            g, l = self.tu_dataset[idx]
+            g, l = self.dgl_dataset[idx]
+            self.max_num_node = max(self.max_num_node, g.num_nodes())
             node_labels = g.ndata.get("node_labels")
             g.ndata["feat"] = (
                 torch.zeros(g.num_nodes(), dtype=torch.long)
@@ -270,7 +289,7 @@ class GraphsDataset(torch.utils.data.Dataset):
                 self.num_edge_type, max(g.edata["feat"].numpy()) + 1
             )
             graphs.append(g)
-            labels.append(float(l))
+            labels.append(int(l))
         return graphs, labels
 
     def upload_indexes(self, train_idx, val_idx, test_idx):
