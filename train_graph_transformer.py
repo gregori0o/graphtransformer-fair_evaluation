@@ -149,6 +149,8 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
         shuffle=False,
         collate_fn=dataset.collate,
     )
+    epoch_test_scores = None
+    best_val_score = 0
 
     # At any point you can hit Ctrl + C to break out of training early.
     try:
@@ -169,6 +171,13 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
                 _, epoch_test_score = evaluate_network(
                     model, device, test_loader, epoch
                 )
+
+                if epoch_val_score > best_val_score:
+                    best_val_score = epoch_val_score
+                    epoch_test_scores = full_evaluate_classification(
+                        model, device, test_loader, epoch
+                    )
+                    epoch_test_scores["epoch"] = epoch
 
                 if trial is not None:
                     trial.report(epoch_val_score, epoch)
@@ -270,7 +279,7 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
             )
         )
 
-    return scores
+    return scores, epoch_test_scores
 
 
 def train_graph_transformer(dataset, config=None, config_file=None):

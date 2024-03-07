@@ -1,5 +1,5 @@
 """
-    Utility functions for training one epoch 
+    Utility functions for training one epoch
     and evaluating one epoch
 """
 import math
@@ -8,7 +8,13 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+from sklearn.metrics import (
+    accuracy_score,
+    f1_score,
+    precision_score,
+    recall_score,
+    roc_auc_score,
+)
 
 from train.metrics import MAE, accuracy_TU
 
@@ -98,6 +104,7 @@ def full_evaluate_classification(model, device, data_loader, epoch):
     model.eval()
     list_targets = []
     list_predictions = []
+    list_probs = []
     with torch.no_grad():
         for iter, (batch_graphs, batch_targets) in enumerate(data_loader):
             batch_graphs = batch_graphs.to(device)
@@ -119,15 +126,21 @@ def full_evaluate_classification(model, device, data_loader, epoch):
             )
             list_targets.append(batch_targets.reshape(-1).detach().cpu().numpy())
             list_predictions.append(batch_scores.detach().argmax(dim=1).cpu().numpy())
+            list_probs.append(F.softmax(batch_scores, dim=1).detach().cpu().numpy())
     targets = np.concatenate(list_targets)
     predictions = np.concatenate(list_predictions)
+    probs = np.concatenate(list_probs)
     accuracy = accuracy_score(targets, predictions)
-    precision = precision_score(targets, predictions, average="macro")
-    recall = recall_score(targets, predictions, average="macro")
-    f1 = f1_score(targets, predictions, average="macro")
+    precision = precision_score(targets, predictions, average="micro")
+    recall = recall_score(targets, predictions, average="micro")
+    f1 = f1_score(targets, predictions, average="micro")
+    macro_f1 = f1_score(targets, predictions, average="macro")
+    roc = roc_auc_score(targets, probs, average="macro", multi_class="ovr")
     return {
         "accuracy": accuracy,
         "precision": precision,
         "recall": recall,
         "f1": f1,
+        "macro f1": macro_f1,
+        "roc": roc,
     }

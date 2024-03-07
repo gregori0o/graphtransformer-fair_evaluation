@@ -75,7 +75,7 @@ def find_best_params(train_config, loaded_dataset, dataset_name, fold):
         else:
             dataset = loaded_dataset
 
-        acc = train_graph_transformer(dataset, train_config)["accuracy"]
+        acc = train_graph_transformer(dataset, train_config)[0]["accuracy"]
         return acc
 
     train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
@@ -140,9 +140,20 @@ def perform_experiment(dataset_name):
     scores = {
         "accuracy": [],
         "f1": [],
+        "macro f1": [],
         "precision": [],
         "recall": [],
+        "roc": [],
     }
+    epoch_scores = {
+        "accuracy": [],
+        "f1": [],
+        "macro f1": [],
+        "precision": [],
+        "recall": [],
+        "roc": [],
+    }
+    best_epochs = []
 
     tuning_result = {}
     for i, fold in enumerate(indexes):
@@ -171,21 +182,38 @@ def perform_experiment(dataset_name):
         scores_r = {
             "accuracy": 0,
             "f1": 0,
+            "macro f1": 0,
             "precision": 0,
             "recall": 0,
+            "roc": 0,
+        }
+        epoch_scores_r = {
+            "accuracy": 0,
+            "f1": 0,
+            "macro f1": 0,
+            "precision": 0,
+            "recall": 0,
+            "roc": 0,
         }
         test_idx = fold["test"]
         for _ in range(R_EVALUATION):
             train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
             dataset.upload_indexes(train_idx, val_idx, test_idx)
-            scores_class = train_graph_transformer(dataset, train_config)
+            scores_class, best_epoch_scores = train_graph_transformer(
+                dataset, train_config
+            )
             for key in scores_r.keys():
                 scores_r[key] += scores_class[key]
+            for key in epoch_scores_r.keys():
+                epoch_scores_r[key] += best_epoch_scores[key]
+            best_epochs.append(best_epoch_scores["epoch"])
         for key in scores_r.keys():
             scores_r[key] /= R_EVALUATION
+            epoch_scores_r[key] /= R_EVALUATION
         print(f"MEAN SCORES = {scores_r} in FOLD {i}")
         for key in scores_r.keys():
             scores[key].append(scores_r[key])
+            epoch_scores[key].append(epoch_scores_r[key])
 
     del dataset
     # evaluate model
@@ -195,7 +223,13 @@ def perform_experiment(dataset_name):
         summ[key]["mean"] = np.mean(scores[key])
         summ[key]["std"] = np.std(scores[key])
 
-    # scores are acc, precision, recall and F1
+    epoch_summ = {}
+    for key in epoch_scores.keys():
+        epoch_summ[key] = {}
+        epoch_summ[key]["mean"] = np.mean(epoch_scores[key])
+        epoch_summ[key]["std"] = np.std(epoch_scores[key])
+
+    # scores are acc, precision, recall, F1 and ROC
     print(f"Evaluation of model on {dataset_name}")
     print(f"Scores: {scores}")
     print(f"Summary: {summ}")
@@ -205,6 +239,9 @@ def perform_experiment(dataset_name):
     train_config["tune_hyperparameters"] = tuning_result
     train_config["summary_scores"] = summ
     train_config["scores"] = scores
+    train_config["ES scores"] = epoch_scores
+    train_config["ES summary_scores"] = epoch_summ
+    train_config["ES best_epochs"] = best_epochs
     train_config["r_evaluation"] = R_EVALUATION
     train_config["k_fold"] = K_FOLD
     del train_config["net_params"]["device"]
@@ -227,3 +264,4 @@ if __name__ == "__main__":
     perform_experiment(DatasetName.REDDIT_BINARY)
     perform_experiment(DatasetName.REDDIT_MULTI)
     perform_experiment(DatasetName.COLLAB)
+    # perform_experiment(DatasetName.MOLHIV)
