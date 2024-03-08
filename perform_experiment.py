@@ -16,6 +16,70 @@ from utils import NpEncoder
 experiment_name = time.strftime("%Y_%m_%d_%Hh%Mm%Ss")
 
 
+special_params = {
+    DatasetName.DD: {
+        "params": {
+            "epochs": 40,
+        },
+        "net_params": {},
+    },
+    DatasetName.NCI1: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+    DatasetName.ENZYMES: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+    DatasetName.PROTEINS: {
+        "params": {
+            "epochs": 60,
+        },
+        "net_params": {},
+    },
+    DatasetName.IMDB_BINARY: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+    DatasetName.IMDB_MULTI: {
+        "params": {
+            "epochs": 60,
+        },
+        "net_params": {},
+    },
+    DatasetName.REDDIT_BINARY: {
+        "params": {
+            "epochs": 50,
+        },
+        "net_params": {},
+    },
+    DatasetName.REDDIT_MULTI: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+    DatasetName.COLLAB: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+    DatasetName.MOLHIV: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
+}
+
+
 def prepare_dataset(dataset, train_config):
     if train_config["net_params"]["lap_pos_enc"]:
         st = time.time()
@@ -120,6 +184,8 @@ def perform_experiment(dataset_name):
 
     with open(config["config_path"], "r") as f:
         train_config = json.load(f)
+    train_config["params"].update(special_params[dataset_name]["params"])
+    train_config["net_params"].update(special_params[dataset_name]["net_params"])
     train_config["out_dir"] = f"out/{dataset_name.value}/"
 
     # load indexes
