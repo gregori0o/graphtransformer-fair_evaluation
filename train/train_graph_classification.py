@@ -135,6 +135,8 @@ def full_evaluate_classification(model, device, data_loader, epoch):
     recall = recall_score(targets, predictions, average="micro")
     f1 = f1_score(targets, predictions, average="micro")
     macro_f1 = f1_score(targets, predictions, average="macro")
+    if model.num_classes == 2:
+        probs = probs[:, 1]
     roc = roc_auc_score(targets, probs, average="macro", multi_class="ovr")
     return {
         "accuracy": accuracy,
