@@ -210,21 +210,21 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
 
                 per_epoch_time.append(time.time() - start)
 
-                # Saving checkpoint
-                ckpt_dir = os.path.join(root_ckpt_dir, "RUN_")
-                if not os.path.exists(ckpt_dir):
-                    os.makedirs(ckpt_dir)
-                torch.save(
-                    model.state_dict(),
-                    "{}.pkl".format(ckpt_dir + "/epoch_" + str(epoch)),
-                )
+                # # Saving checkpoint
+                # ckpt_dir = os.path.join(root_ckpt_dir, "RUN_")
+                # if not os.path.exists(ckpt_dir):
+                #     os.makedirs(ckpt_dir)
+                # torch.save(
+                #     model.state_dict(),
+                #     "{}.pkl".format(ckpt_dir + "/epoch_" + str(epoch)),
+                # )
 
-                files = glob.glob(ckpt_dir + "/*.pkl")
-                for file in files:
-                    epoch_nb = file.split("_")[-1]
-                    epoch_nb = int(epoch_nb.split(".")[0])
-                    if epoch_nb < epoch - 1:
-                        os.remove(file)
+                # files = glob.glob(ckpt_dir + "/*.pkl")
+                # for file in files:
+                #     epoch_nb = file.split("_")[-1]
+                #     epoch_nb = int(epoch_nb.split(".")[0])
+                #     if epoch_nb < epoch - 1:
+                #         os.remove(file)
 
                 scheduler.step(epoch_val_loss)
 

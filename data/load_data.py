@@ -30,6 +30,19 @@ class DatasetName(Enum):
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
     MOLHIV = "ogbg-molhiv"
+    WEB = "Web"
+
+
+iam_datasets = [DatasetName.WEB.value]
+
+
+def iam_to_dgl(graph):
+    g = dgl.DGLGraph()
+    g.add_nodes(graph.num_nodes)
+    g.add_edges(graph.edge_index[0], graph.edge_index[1])
+    g.ndata["feat"] = graph.x
+    g.edata["feat"] = graph.edge_attr
+    return g
 
 
 def load_indexes(dataset_name: DatasetName):
@@ -239,6 +252,24 @@ class GraphsDataset(torch.utils.data.Dataset):
             self.max_num_node = max([g.num_nodes() for g in self.graphs])
             self.num_node_type = get_atom_feature_dims()
             self.num_edge_type = get_bond_feature_dims()
+        elif self.name in iam_datasets:
+            self.torch_dataset = torch.load(f"{data_dir}/data.pt")
+            self.size = len(self.torch_dataset)
+            self.graphs = [iam_to_dgl(graph) for graph in self.torch_dataset]
+            self.labels = [int(graph.y) for graph in self.torch_dataset]
+            self.max_num_node = max([g.num_nodes() for g in self.graphs])
+            self.num_classes = max(self.labels) + 1
+            self.num_node_type = [1] * self.torch_dataset[0].x.size(1)
+            self.num_edge_type = [1] * self.torch_dataset[0].edge_attr.size(1)
+            for graph in self.torch_dataset:
+                for i in range(graph.x.size(1)):
+                    self.num_node_type[i] = max(
+                        int(torch.max(graph.x[:, i])) + 1, self.num_node_type[i]
+                    )
+                for i in range(graph.edge_attr.size(1)):
+                    self.num_edge_type[i] = max(
+                        int(torch.max(graph.edge_attr[:, i])) + 1, self.num_edge_type[i]
+                    )
         else:
             self.dgl_dataset = TUDataset(self.name, raw_dir=data_dir)
             self.num_classes = self.dgl_dataset.num_labels
