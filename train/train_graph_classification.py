@@ -135,9 +135,16 @@ def full_evaluate_classification(model, device, data_loader, epoch):
     recall = recall_score(targets, predictions, average="micro")
     f1 = f1_score(targets, predictions, average="micro")
     macro_f1 = f1_score(targets, predictions, average="macro")
-    if model.num_classes == 2:
-        probs = probs[:, 1]
-    roc = roc_auc_score(targets, probs, average="macro", multi_class="ovr")
+    # if :
+    #     probs = probs[:, 1]
+    # roc = roc_auc_score(targets, probs, average="macro", multi_class="ovr")
+    unique_values = np.unique(targets)
+    if len(unique_values) == model.num_classes:
+        if model.num_classes == 2:
+            probs = probs[:, 1]
+        roc = roc_auc_score(targets, probs, average="macro", multi_class="ovr")
+    else:
+        roc = 0
     return {
         "accuracy": accuracy,
         "precision": precision,

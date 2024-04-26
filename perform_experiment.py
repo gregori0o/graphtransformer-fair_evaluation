@@ -83,6 +83,12 @@ special_params = {
         },
         "net_params": {},
     },
+    DatasetName.MUTAGEN: {
+        "params": {
+            "epochs": 100,
+        },
+        "net_params": {},
+    },
 }
 
 
@@ -327,9 +333,9 @@ def perform_experiment(dataset_name):
 
 
 if __name__ == "__main__":
-    # perform_experiment(DatasetName.DD)
+    # perform_experiment(DatasetName.ENZYMES)
     # perform_experiment(DatasetName.NCI1)
-    perform_experiment(DatasetName.WEB)
+    perform_experiment(DatasetName.MUTAGEN)
     # perform_experiment(DatasetName.PROTEINS)
     # perform_experiment(DatasetName.IMDB_BINARY)
     # perform_experiment(DatasetName.IMDB_MULTI)

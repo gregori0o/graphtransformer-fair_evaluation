@@ -31,9 +31,10 @@ class DatasetName(Enum):
     COLLAB = "COLLAB"
     MOLHIV = "ogbg-molhiv"
     WEB = "Web"
+    MUTAGEN = "Mutagenicity"
 
 
-iam_datasets = [DatasetName.WEB.value]
+iam_datasets = [DatasetName.WEB.value, DatasetName.MUTAGEN.value]
 
 
 def iam_to_dgl(graph):
@@ -270,6 +271,8 @@ class GraphsDataset(torch.utils.data.Dataset):
                     self.num_edge_type[i] = max(
                         int(torch.max(graph.edge_attr[:, i])) + 1, self.num_edge_type[i]
                     )
+            self.num_node_type = self.num_node_type[0]
+            self.num_edge_type = self.num_edge_type[0]
         else:
             self.dgl_dataset = TUDataset(self.name, raw_dir=data_dir)
             self.num_classes = self.dgl_dataset.num_labels
