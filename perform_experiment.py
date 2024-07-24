@@ -5,11 +5,14 @@ import time
 
 import numpy as np
 import optuna
+import torch
 from optuna.trial import TrialState
 from sklearn.model_selection import train_test_split
+from torch.utils.data import DataLoader
 
 from data.load_data import DatasetName, GraphsDataset, load_indexes
 from evaluation_config import K_FOLD, R_EVALUATION
+from time_measure import time_measure
 from train_graph_transformer import train_graph_transformer
 from utils import NpEncoder
 
@@ -19,7 +22,7 @@ experiment_name = time.strftime("%Y_%m_%d_%Hh%Mm%Ss")
 special_params = {
     DatasetName.DD: {
         "params": {
-            "epochs": 40,
+            "epochs": 100,
         },
         "net_params": {},
     },
@@ -37,7 +40,7 @@ special_params = {
     },
     DatasetName.PROTEINS: {
         "params": {
-            "epochs": 60,
+            "epochs": 100,
         },
         "net_params": {},
     },
@@ -49,13 +52,13 @@ special_params = {
     },
     DatasetName.IMDB_MULTI: {
         "params": {
-            "epochs": 60,
+            "epochs": 100,
         },
         "net_params": {},
     },
     DatasetName.REDDIT_BINARY: {
         "params": {
-            "epochs": 50,
+            "epochs": 100,
         },
         "net_params": {},
     },
@@ -94,30 +97,30 @@ special_params = {
 
 def prepare_dataset(dataset, train_config):
     if train_config["net_params"]["lap_pos_enc"]:
-        st = time.time()
-        print("[!] Adding Laplacian positional encoding.")
+        # st = time.time()
+        # print("[!] Adding Laplacian positional encoding.")
         dataset._add_laplacian_positional_encodings(
             train_config["net_params"]["pos_enc_dim"]
         )
-        print("Time LapPE:", time.time() - st)
+        # print("Time LapPE:", time.time() - st)
 
     if train_config["net_params"]["wl_pos_enc"]:
-        st = time.time()
-        print("[!] Adding WL positional encoding.")
+        # st = time.time()
+        # print("[!] Adding WL positional encoding.")
         dataset._add_wl_positional_encodings()
-        print("Time WL PE:", time.time() - st)
+        # print("Time WL PE:", time.time() - st)
 
     if train_config["net_params"]["full_graph"]:
-        st = time.time()
-        print("[!] Converting the given graphs to full graphs..")
+        # st = time.time()
+        # print("[!] Converting the given graphs to full graphs..")
         dataset._make_full_graph()
-        print("Time taken to convert to full graphs:", time.time() - st)
+        # print("Time taken to convert to full graphs:", time.time() - st)
 
     if train_config["net_params"]["self_loop"]:
-        st = time.time()
-        print("[!] Converting the given graphs, adding self loops..")
+        # st = time.time()
+        # print("[!] Converting the given graphs, adding self loops..")
         dataset._add_self_loops()
-        print("Time taken to add self loops:", time.time() - st)
+        # print("Time taken to add self loops:", time.time() - st)
 
 
 def find_best_params(train_config, loaded_dataset, dataset_name, fold):
@@ -184,6 +187,33 @@ def find_best_params(train_config, loaded_dataset, dataset_name, fold):
     return best_params, trial.value
 
 
+def get_prediction(model, device, data_loader):
+    model.eval()
+    list_predictions = []
+    with torch.no_grad():
+        for iter, (batch_graphs, batch_targets) in enumerate(data_loader):
+            batch_graphs = batch_graphs.to(device)
+            batch_x = batch_graphs.ndata["feat"].to(device)
+            batch_e = batch_graphs.edata["feat"].to(device)
+            batch_targets = batch_targets.to(device)
+            try:
+                batch_lap_pos_enc = batch_graphs.ndata["lap_pos_enc"].to(device)
+            except:
+                batch_lap_pos_enc = None
+
+            try:
+                batch_wl_pos_enc = batch_graphs.ndata["wl_pos_enc"].to(device)
+            except:
+                batch_wl_pos_enc = None
+
+            batch_scores = model.forward(
+                batch_graphs, batch_x, batch_e, batch_lap_pos_enc, batch_wl_pos_enc
+            )
+            list_predictions.append(batch_scores.detach().argmax(dim=1).cpu().numpy())
+    predictions = np.concatenate(list_predictions)
+    return predictions
+
+
 def perform_experiment(dataset_name):
     # config = configurations.get(dataset_name)
     # if config is None:
@@ -212,134 +242,43 @@ def perform_experiment(dataset_name):
     train_config["net_params"]["num_edge_type"] = dataset.num_edge_type
 
     # prepare dataset
-    prepare_dataset(dataset, train_config)
+    time_measure(prepare_dataset, "gt", dataset_name, "preparation")(
+        dataset, train_config
+    )
+    # prepare_dataset(dataset, train_config)
 
-    # loop over splits
-    scores = {
-        "accuracy": [],
-        "f1": [],
-        "macro f1": [],
-        "precision": [],
-        "recall": [],
-        "roc": [],
-    }
-    epoch_scores = {
-        "accuracy": [],
-        "f1": [],
-        "macro f1": [],
-        "precision": [],
-        "recall": [],
-        "roc": [],
-    }
-    best_epochs = []
-
-    tuning_result = {}
     for i, fold in enumerate(indexes):
         print(f"FOLD {i}")
-        needs_new_dataset = False
-
-        ## get best model for train data
-        if config.get("tune_hyperparameters"):
-            needs_new_dataset = True
-            best_params, best_acc = find_best_params(
-                train_config, dataset, dataset_name, fold
-            )
-
-            train_config["params"].update(best_params["params"])
-            train_config["net_params"].update(best_params["net_params"])
-            tuning_result[i] = {
-                "params": best_params["params"],
-                "net_params": best_params["net_params"],
-                "accuracy": best_acc,
-            }
-
-        if needs_new_dataset:
-            dataset = GraphsDataset(dataset_name)
-            prepare_dataset(dataset, train_config)
-        # evaluate model R times
-        scores_r = {
-            "accuracy": 0,
-            "f1": 0,
-            "macro f1": 0,
-            "precision": 0,
-            "recall": 0,
-            "roc": 0,
-        }
-        epoch_scores_r = {
-            "accuracy": 0,
-            "f1": 0,
-            "macro f1": 0,
-            "precision": 0,
-            "recall": 0,
-            "roc": 0,
-        }
         test_idx = fold["test"]
-        for _ in range(R_EVALUATION):
-            train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
-            dataset.upload_indexes(train_idx, val_idx, test_idx)
-            scores_class, best_epoch_scores = train_graph_transformer(
-                dataset, train_config
-            )
-            for key in scores_r.keys():
-                scores_r[key] += scores_class[key]
-            for key in epoch_scores_r.keys():
-                epoch_scores_r[key] += best_epoch_scores[key]
-            best_epochs.append(best_epoch_scores["epoch"])
-        for key in scores_r.keys():
-            scores_r[key] /= R_EVALUATION
-            epoch_scores_r[key] /= R_EVALUATION
-        print(f"MEAN SCORES = {scores_r} in FOLD {i}")
-        for key in scores_r.keys():
-            scores[key].append(scores_r[key])
-            epoch_scores[key].append(epoch_scores_r[key])
+        train_idx, val_idx = train_test_split(fold["train"], test_size=0.1)
+        dataset.upload_indexes(train_idx, val_idx, test_idx)
 
+        model, device = time_measure(
+            train_graph_transformer, "gt", dataset_name, "training"
+        )(dataset, train_config)
+
+        eval_idx = list(range(128))
+        dataset.upload_indexes(eval_idx, eval_idx, eval_idx)
+        eval_loader = DataLoader(
+            dataset.test,
+            batch_size=config["params"]["batch_size"],
+            shuffle=False,
+            collate_fn=dataset.collate,
+        )
+
+        predictions = time_measure(get_prediction, "gt", dataset_name, "evaluation")(
+            model, device, eval_loader
+        )
+
+        # scores_class, best_epoch_scores = train_graph_transformer(
+        #     dataset, train_config
+        # )
+        break
     del dataset
     # evaluate model
-    summ = {}
-    for key in scores.keys():
-        summ[key] = {}
-        summ[key]["mean"] = np.mean(scores[key])
-        summ[key]["std"] = np.std(scores[key])
-
-    epoch_summ = {}
-    for key in epoch_scores.keys():
-        epoch_summ[key] = {}
-        epoch_summ[key]["mean"] = np.mean(epoch_scores[key])
-        epoch_summ[key]["std"] = np.std(epoch_scores[key])
-
-    # scores are acc, precision, recall, F1 and ROC
-    print(f"Evaluation of model on {dataset_name}")
-    print(f"Scores: {scores}")
-    print(f"Summary: {summ}")
-
-    train_config["dataset_name"] = dataset_name.value
-    train_config["run_config"] = config
-    train_config["tune_hyperparameters"] = tuning_result
-    train_config["summary_scores"] = summ
-    train_config["scores"] = scores
-    train_config["ES scores"] = epoch_scores
-    train_config["ES summary_scores"] = epoch_summ
-    train_config["ES best_epochs"] = best_epochs
-    train_config["r_evaluation"] = R_EVALUATION
-    train_config["k_fold"] = K_FOLD
-    del train_config["net_params"]["device"]
-    dumped = json.dumps(train_config, cls=NpEncoder)
-    os.makedirs(f"results/{experiment_name}", exist_ok=True)
-    with open(
-        f"results/{experiment_name}/result_GT_{dataset_name.value}_{time.strftime('%Hh%Mm%Ss_on_%b_%d_%Y')}.json",
-        "w",
-    ) as f:
-        f.write(dumped)
 
 
 if __name__ == "__main__":
-    # perform_experiment(DatasetName.ENZYMES)
-    # perform_experiment(DatasetName.NCI1)
-    perform_experiment(DatasetName.MUTAGEN)
-    # perform_experiment(DatasetName.PROTEINS)
-    # perform_experiment(DatasetName.IMDB_BINARY)
-    # perform_experiment(DatasetName.IMDB_MULTI)
-    # perform_experiment(DatasetName.REDDIT_BINARY)
-    # perform_experiment(DatasetName.REDDIT_MULTI)
-    # perform_experiment(DatasetName.COLLAB)
-    # perform_experiment(DatasetName.MOLHIV)
+    for dataset_name in DatasetName:
+        print(f"Performing experiment for {dataset_name}")
+        perform_experiment(dataset_name)

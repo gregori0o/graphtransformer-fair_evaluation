@@ -278,8 +278,9 @@ def train_val_pipeline(MODEL_NAME, dataset, params, net_params, dirs, trial):
                 np.mean(per_epoch_time),
             )
         )
+    return model, device
 
-    return scores, epoch_test_scores
+    # return scores, epoch_test_scores
 
 
 def train_graph_transformer(dataset, config=None, config_file=None):

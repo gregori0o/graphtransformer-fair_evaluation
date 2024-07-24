@@ -30,7 +30,7 @@ class DatasetName(Enum):
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
     MOLHIV = "ogbg-molhiv"
-    WEB = "Web"
+    # WEB = "Web"
     MUTAGEN = "Mutagenicity"
 
 
@@ -269,7 +269,6 @@ class GraphsDataset(torch.utils.data.Dataset):
                 self.num_edge_type = max(
                     int(torch.max(graph.edge_attr)) + 1, self.num_edge_type
                 )
-
 
             # self.num_node_type = [1] * self.torch_dataset[0].x.size(1)
             # self.num_edge_type = [1] * self.torch_dataset[0].edge_attr.size(1)
