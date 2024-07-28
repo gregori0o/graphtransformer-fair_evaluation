@@ -261,7 +261,7 @@ def perform_experiment(dataset_name):
         dataset.upload_indexes(eval_idx, eval_idx, eval_idx)
         eval_loader = DataLoader(
             dataset.test,
-            batch_size=config["params"]["batch_size"],
+            batch_size=train_config["params"]["batch_size"],
             shuffle=False,
             collate_fn=dataset.collate,
         )
@@ -280,5 +280,7 @@ def perform_experiment(dataset_name):
 
 if __name__ == "__main__":
     for dataset_name in DatasetName:
+        if dataset_name == DatasetName.WEB:
+            continue
         print(f"Performing experiment for {dataset_name}")
         perform_experiment(dataset_name)

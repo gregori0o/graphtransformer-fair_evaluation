@@ -30,7 +30,7 @@ class DatasetName(Enum):
     REDDIT_MULTI = "REDDIT-MULTI-5K"
     COLLAB = "COLLAB"
     MOLHIV = "ogbg-molhiv"
-    # WEB = "Web"
+    WEB = "Web"
     MUTAGEN = "Mutagenicity"
 
 
